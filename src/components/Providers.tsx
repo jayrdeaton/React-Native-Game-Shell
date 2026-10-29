@@ -9,16 +9,29 @@ import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux
 import type { Persistor } from 'redux-persist'
 import { PersistGate } from 'redux-persist/integration/react'
 
+import { usePack } from '../PackContext'
 import type { PackStore } from '../redux/createPackStore'
 import type { ShellState } from '../redux/shellState'
+import type { FeedbackSounds } from '../types'
 
 interface Props {
   children: ReactNode
 }
 
+// Generic UI feedback sounds, wired into every Button/IconButton/etc. in the package (see
+// useFeedbackHandlers' `fire`, which already gates these on the sound-enabled setting itself -
+// no need to re-check it here).
+function useShellFeedbackSounds(): FeedbackSounds {
+  const selection = useAudioPool(require('../../assets/sounds/select.wav'))
+  const notification = useAudioPool(require('../../assets/sounds/notification.wav'))
+  return { selection, notification }
+}
+
 // Redux-backed haptic/sound settings, dispatching through @rific/feedback-press's own
 // hapticActions/soundActions - same shape as Expo-Starter/Snake's FeedbackBridge, converged onto
-// fleet-wide rather than this app's old direct-AsyncStorage version.
+// fleet-wide rather than this app's old direct-AsyncStorage version. The two sounds are the pack's own
+// where it has them (PackDefinition.useFeedbackSounds: Solitaire's card sound and invalid-move sound);
+// the pack never changes while it runs, so the same hook is called on every render.
 const FeedbackBridge = ({ children }: Props) => {
   const haptic = useSelector((state: ShellState) => state.haptic)
   const sound = useSelector((state: ShellState) => state.sound)
@@ -26,13 +39,10 @@ const FeedbackBridge = ({ children }: Props) => {
   const onChange = useCallback((next: HapticSettings) => dispatch(hapticActions.initialize(next)), [dispatch])
   const onSoundChange = useCallback((next: SoundSettings) => dispatch(soundActions.initialize(next)), [dispatch])
 
-  // Generic UI feedback sounds, wired into every Button/IconButton/etc. in the package (see
-  // useFeedbackHandlers' `fire`, which already gates these on the sound-enabled setting itself -
-  // no need to re-check it here).
-  const playSelection = useAudioPool(require('../../assets/sounds/select.wav'))
-  const playNotification = useAudioPool(require('../../assets/sounds/notification.wav'))
+  const { useFeedbackSounds = useShellFeedbackSounds } = usePack()
+  const sounds = useFeedbackSounds()
 
-  const bridgeProps = useFeedbackBridgeProps({ initialValue: haptic, onChange, soundInitialValue: sound, onSoundChange, sound: { selection: playSelection, notification: playNotification } })
+  const bridgeProps = useFeedbackBridgeProps({ initialValue: haptic, onChange, soundInitialValue: sound, onSoundChange, sound: sounds })
 
   return (
     <FeedbackPressProvider {...bridgeProps} paper={RNPaper}>

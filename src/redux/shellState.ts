@@ -21,7 +21,7 @@ const appSoundReducer = (state: SoundSettings = initialSoundSettings, action: { 
 
 // The store keys every pack has, whatever its games, built from the pack's own seat colors and
 // appearance. Each game adds its own keys beside these (see GameDefinition.reducers).
-export function createShellReducers({ seatColors, appearance = 'system' }: Pick<PackDefinition, 'seatColors' | 'appearance'>) {
+export function createShellReducers({ seatColors, appearance = 'system', seatTheme }: Pick<PackDefinition, 'seatColors' | 'appearance' | 'seatTheme'>) {
   return {
     // Explicit primary/secondary triad (rather than a single seed expanded via harmony) so the pack's
     // identity is pinned exactly instead of drifting with whatever hue math a harmony offset would
@@ -30,7 +30,9 @@ export function createShellReducers({ seatColors, appearance = 'system' }: Pick<
     // derived, not picked, via getThirdColor: the hue maximally distant from both (see
     // @rific/auto-paper's README "Explicit triad" section). The appearance is the pack's ('system',
     // createThemeReducer's own default, when it sets none).
-    theme: createThemeReducer({ appearance, color: { primary: seatColors[1], secondary: seatColors[2], tertiary: getThirdColor(seatColors[1], seatColors[2]) } }),
+    // A pack with its own seatTheme starts from what seat 1's default color makes of it instead (dark
+    // only when the pack's appearance is; hooks/useSeatColors.ts re-applies it with the live mode).
+    theme: createThemeReducer(seatTheme ? { appearance, ...seatTheme(seatColors, appearance === 'dark') } : { appearance, color: { primary: seatColors[1], secondary: seatColors[2], tertiary: getThirdColor(seatColors[1], seatColors[2]) } }),
     haptic: hapticReducer,
     sound: appSoundReducer,
     // @rific/core's Keep Awake setting (see Providers.tsx's KeepAwakeBridge), under the namespace its

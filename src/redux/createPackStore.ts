@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { combineReducers, configureStore, type Middleware, type Reducer } from '@reduxjs/toolkit'
 import { FLUSH, PAUSE, PERSIST, type PersistedState, persistReducer, persistStore, PURGE, REGISTER, REHYDRATE } from 'redux-persist'
 
-import type { GameDefinition, PackDefinition } from '../types'
+import type { PackDefinition, PackGameDefinition } from '../types'
 import lastActiveGame from './lastActiveGameSlice'
 import { createShellReducers } from './shellState'
 
@@ -22,16 +22,25 @@ export interface PackStoreConfig {
   keyPrefix: string
   // redux-persist's migrate, run on the saved store before it rehydrates (see pack.ts).
   migrate?: (state: PersistedState, version: number) => Promise<PersistedState>
+  // Keys left out of the root entry, beside liveplay: keys that persist themselves (a key whose reducer
+  // is its own persistReducer, saving each game's board to an entry of its own), so they aren't written
+  // into the root entry too.
+  blacklist?: readonly string[]
+  // State paths the dev serializability check skips (keys too big to walk on every action, such as
+  // saved boards).
+  serializableIgnoredPaths?: readonly string[]
+  // The pack's own middleware, after the shell's.
+  middleware?: readonly Middleware[]
 }
 
 // What the store is built from: the pack's games (each mounts its own keys, GameDefinition.reducers,
 // and whether one is resumable decides the resume key), the pack's own keys (PackDefinition.reducers),
 // and the seat colors and appearance the shell's own keys start from.
-export type PackStoreSource = Pick<PackDefinition, 'seatColors' | 'appearance' | 'reducers'> & { games: readonly Pick<GameDefinition, 'reducers' | 'resumable'>[] }
+export type PackStoreSource = Pick<PackDefinition, 'seatColors' | 'appearance' | 'seatTheme' | 'reducers'> & { games: readonly Pick<PackGameDefinition, 'reducers' | 'resumable'>[] }
 
 // The pack's one Redux store, persisted with redux-persist: the shell's keys (shellState.ts), the
 // pack's own, and every game's own.
-export function createPackStore(pack: PackStoreSource, { keyPrefix, migrate }: PackStoreConfig) {
+export function createPackStore(pack: PackStoreSource, { keyPrefix, migrate, blacklist = [], serializableIgnoredPaths = [], middleware = [] }: PackStoreConfig) {
   const gameReducers: Record<string, Reducer> = Object.assign({}, ...pack.games.map((game) => game.reducers))
   // Which play screen the player was last on, for a cold launch to resume (GameDefinition.resumable).
   // Only in a pack with a resumable game, so a pack without one saves exactly what it did before.
@@ -52,7 +61,7 @@ export function createPackStore(pack: PackStoreSource, { keyPrefix, migrate }: P
       // failing to ever resolve at all isn't a failure mode worth a 5s failsafe for.
       timeout: 0,
       // liveplay is per-round state that must never survive a relaunch (see liveplaySlice.ts).
-      blacklist: ['liveplay'],
+      blacklist: ['liveplay', ...blacklist],
       migrate
     },
     rootReducer
@@ -63,10 +72,11 @@ export function createPackStore(pack: PackStoreSource, { keyPrefix, migrate }: P
       const defaultMiddleware = getDefaultMiddleware({
         immutableCheck: false,
         serializableCheck: {
-          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER]
+          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+          ignoredPaths: [...serializableIgnoredPaths]
         }
       })
-      return defaultMiddleware.concat(errorMiddleware)
+      return defaultMiddleware.concat(errorMiddleware, ...middleware)
     },
     reducer: persistedReducer
   })

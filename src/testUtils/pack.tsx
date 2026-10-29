@@ -7,7 +7,7 @@ import { LastActiveGameProvider } from '../hooks/useLastActiveGame'
 import { PackProvider } from '../PackContext'
 import lastActiveGame from '../redux/lastActiveGameSlice'
 import { createShellReducers } from '../redux/shellState'
-import type { GameDefinition, GameLoadout, PackDefinition } from '../types'
+import type { GameDefinition, GameLoadout, GuidelessGameDefinition, PackDefinition, PackGameDefinition } from '../types'
 
 // Stand-ins for the screens' tests: a game and a pack with every required field, which a test
 // overrides with what it's about (a game with no seats, no loadout, a preview, a resume).
@@ -25,7 +25,10 @@ export const STAND_IN_LOADOUT: GameLoadout = {
 
 // A two-seat game like PuckTastic's and DuelTastic's: a loadout, the CPU or a person in seat 2.
 // Its icon and play screen say whose they are, by test id.
-export function standInGame(id: string, overrides: Partial<GameDefinition> = {}): GameDefinition {
+// Overridden with `guide: undefined`, it's a game the pack's own guide teaches.
+export function standInGame(id: string, overrides: Partial<Omit<GameDefinition, 'guide'>> & { guide: undefined }): GuidelessGameDefinition
+export function standInGame(id: string, overrides?: Partial<GameDefinition>): GameDefinition
+export function standInGame(id: string, overrides: Partial<GameDefinition> = {}): PackGameDefinition {
   return {
     id,
     title: `Game ${id}`,
@@ -45,7 +48,7 @@ export function standInGame(id: string, overrides: Partial<GameDefinition> = {})
   }
 }
 
-export function standInPack(games: readonly GameDefinition[], overrides: Partial<PackDefinition> = {}): PackDefinition {
+export function standInPack(games: readonly PackGameDefinition[], overrides: Partial<PackDefinition> = {}): PackDefinition {
   return {
     name: 'TestTastic',
     wordmark: ['Test', 'Tastic'],

@@ -3,7 +3,8 @@ import { useEffect } from 'react'
 
 import { useLastActiveGame } from '../hooks/useLastActiveGame'
 import { usePackGame } from '../PackContext'
-import type { GameDefinition } from '../types'
+import { playHref } from '../routes'
+import type { PackGameDefinition } from '../types'
 import { type LoadoutGame, LoadoutScreen } from './LoadoutScreen'
 
 // The game routes, loadout/[game] and play/[game]: a game's loadout and its play screen, by id. An id
@@ -17,11 +18,11 @@ export function LoadoutRoute() {
   const game = usePackGame(id)
   if (!game) return <Redirect href='/' />
   // A game with nothing to set up has no loadout (GameDefinition.useLoadout): a link to one plays it.
-  if (!hasLoadout(game)) return <Redirect href={{ pathname: '/play/[game]', params: { game: game.id } }} />
+  if (!hasLoadout(game)) return <Redirect href={playHref(game.id)} />
   return <LoadoutScreen key={game.id} game={game} />
 }
 
-function hasLoadout(game: GameDefinition): game is LoadoutGame {
+function hasLoadout(game: PackGameDefinition): game is LoadoutGame {
   return !!game.useLoadout
 }
 

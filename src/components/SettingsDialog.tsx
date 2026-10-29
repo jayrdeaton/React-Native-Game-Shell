@@ -1,6 +1,6 @@
 import { useUpdateErrorToast } from '@rific/toaster'
 import { ViewRotation } from '@tastic/core'
-import { BaseSettingsDialog } from '@tastic/hud'
+import { BaseSettingsDialog } from '@tastic/hud/chrome'
 import type { ReactNode } from 'react'
 
 import { useAppSettings } from '../hooks/useAppSettings'
@@ -26,15 +26,17 @@ export interface SettingsDialogProps {
 // The pack-wide Settings dialog: everything the shell puts in it applies to every game (Lock
 // Orientation, Edge Guard, theme, sound, haptics, Keep Awake), so it reads and writes the app
 // settings itself. Under those, a play screen's own rows and then the pack's own sections
-// (PackDefinition.SettingsSections), in every Settings dialog the pack opens.
+// (PackDefinition.SettingsSections), in every Settings dialog the pack opens. A pack with edgeGuard
+// false gets no Edge Guard row: hud draws it on iOS whenever its props are passed.
 export function SettingsDialog({ visible, onDismiss, rotation = 0, onShowHowToPlay, children }: SettingsDialogProps) {
   const onUpdateError = useUpdateErrorToast()
   const { settings, setSettings } = useAppSettings()
   // The pack's otaVersion (src/constants/release.ts, which the OTA tooling bumps).
-  const { otaVersion, SettingsSections } = usePack()
+  const { otaVersion, SettingsSections, edgeGuard = true } = usePack()
+  const edgeGuardProps = edgeGuard ? { deferBottomEdgeGestures: settings.deferBottomEdgeGestures, onDeferBottomEdgeGestures: (value: boolean) => setSettings({ deferBottomEdgeGestures: value }) } : {}
 
   return (
-    <BaseSettingsDialog visible={visible} onDismiss={onDismiss} rotation={rotation} version={otaVersion} lockOrientation={settings.lockOrientation} onLockOrientationChange={(value) => setSettings({ lockOrientation: value })} deferBottomEdgeGestures={settings.deferBottomEdgeGestures} onDeferBottomEdgeGestures={(value) => setSettings({ deferBottomEdgeGestures: value })} onUpdateError={onUpdateError} onShowHowToPlay={onShowHowToPlay}>
+    <BaseSettingsDialog visible={visible} onDismiss={onDismiss} rotation={rotation} version={otaVersion} lockOrientation={settings.lockOrientation} onLockOrientationChange={(value) => setSettings({ lockOrientation: value })} {...edgeGuardProps} onUpdateError={onUpdateError} onShowHowToPlay={onShowHowToPlay}>
       {children}
       {SettingsSections && <SettingsSections />}
     </BaseSettingsDialog>

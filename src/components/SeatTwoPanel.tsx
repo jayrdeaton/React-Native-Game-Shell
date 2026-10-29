@@ -1,5 +1,6 @@
 import type { SeedColor } from '@rific/auto-paper'
-import { type MenuOption, type PopoverHost, ReadyButton, useZoneClampedAlign } from '@tastic/hud'
+import type { PopoverHost } from '@tastic/hud/chrome'
+import { type MenuOption, ReadyButton, useZoneClampedAlign } from '@tastic/hud/lobby'
 import { getOptionPickerContentSize, OptionPicker, type OptionPickerOption, type Profile, type ProfilePickerColorSection } from '@tastic/profile'
 import { ReactNode, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'

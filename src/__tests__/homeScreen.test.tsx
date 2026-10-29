@@ -31,7 +31,7 @@ jest.mock('expo-router', () => {
     Redirect: ({ href }: { href: unknown }) => <Text testID='redirect'>{JSON.stringify(href)}</Text>
   }
 })
-jest.mock('../components/GuideHost', () => ({ useGameGuide: () => ({ openFirstTime: mockOpenFirstTime, openFor: jest.fn() }) }))
+jest.mock('../components/GuideHost', () => ({ useGameGuide: () => ({ openFirstTime: mockOpenFirstTime, openFor: jest.fn(), openPack: jest.fn(), autoShowPack: jest.fn() }) }))
 jest.mock('../components/SettingsDialog', () => ({ SettingsDialog: () => null }))
 jest.mock('../hooks/useProfiles', () => ({ useProfiles: () => ({ profiles: [], lastSelected: { 1: null, 2: null }, selectProfile: jest.fn() }) }))
 jest.mock('../hooks/useSeatColors', () => ({ useSeatColors: () => ({ p1Color: '#2196f3', p2Color: '#f44336', handleP1ColorChange: jest.fn() }) }))

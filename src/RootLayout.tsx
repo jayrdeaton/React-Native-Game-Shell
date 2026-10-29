@@ -2,12 +2,13 @@ import { useAutoPaperTheme } from '@rific/auto-paper'
 import { useHapticSettings } from '@rific/feedback-press'
 import { Toaster, ToastProvider } from '@rific/toaster'
 import { OrientationProvider, useRotationAwareStatusBar, useThemedRootBackground } from '@tastic/core'
-import { RotatedFrame } from '@tastic/hud'
+import { RotatedFrame } from '@tastic/hud/chrome'
+import { ProfileColorProvider } from '@tastic/profile'
 import * as Haptics from 'expo-haptics'
-import { Stack } from 'expo-router'
+import { DarkTheme, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router'
 import { DeviceMotion } from 'expo-sensors'
-import { ReactNode, useCallback } from 'react'
-import { StyleSheet } from 'react-native'
+import { ReactNode, useCallback, useMemo } from 'react'
+import { Platform, StyleSheet, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import * as RNPaper from 'react-native-paper'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -21,10 +22,10 @@ import { UpdateDialog } from './components/UpdateDialog'
 import { useAppSettings } from './hooks/useAppSettings'
 import { LastActiveGameProvider } from './hooks/useLastActiveGame'
 import { ProfilesProvider, useProfiles } from './hooks/useProfiles'
-import { PackProvider } from './PackContext'
+import { PackProvider, usePack } from './PackContext'
 import type { PackStore } from './redux/createPackStore'
 import { SplashGate } from './splashGate'
-import type { GameDefinition, PackDefinition } from './types'
+import type { PackDefinition, PackGameDefinition } from './types'
 
 // The pack's root: every provider the shell needs, the pack's games' own providers, and the stack.
 // src/app/_layout.tsx hands it the pack (pack.ts) and its store, so nothing in shell/ imports a
@@ -45,17 +46,56 @@ import type { GameDefinition, PackDefinition } from './types'
 // statusBar={false}). No `locked` argument: OrientationBridge already freezes the reading it
 // follows. A play screen hides the bar for the whole round, whatever the angle (a screen's own
 // options win over screenOptions); index is listed first so it stays the stack's first route.
+// A game with keepStatusBar (Solitaire's) keeps the screen options' rotation-aware bar instead.
 const PLAY_OPTIONS = { statusBarHidden: true }
+const KEEP_STATUS_BAR_OPTIONS = {}
+
+// A pack's Backdrop (PackDefinition.Backdrop) is drawn once behind the whole stack and has to show
+// through two layers: each screen's contentStyle, and the layers React Navigation paints its theme's
+// `colors.background` on around every screen (the ScreenStack's container on native, each screen's
+// wrapper on the web). contentStyle alone left an opaque light grey slab over Solitaire's felt on the
+// web. Nothing else reads the navigation theme (headers are hidden; Paper has its own). Built only for
+// a pack with a backdrop, as it renders: never at import, where a pack's tests may stand in for
+// expo-router without a DarkTheme.
+const TRANSPARENT_CONTENT = { backgroundColor: 'transparent' }
+
+// The pack's own screen options (PackDefinition.useScreenOptions), as a hook every pack calls: an
+// empty object without them.
+const noScreenOptions = () => ({})
 
 function AppStack() {
+  const pack = usePack()
+  const { Backdrop } = pack
   const { dark } = useAutoPaperTheme()
-  const rootBackground = useThemedRootBackground(dark, false)
+  // Over a backdrop the root window stays dark whatever the mode: a backdrop is a dark table (the
+  // felt), and a light root window would flash white around it during a push or pop.
+  const rootBackground = useThemedRootBackground(Backdrop ? true : dark, false)
   const statusBar = useRotationAwareStatusBar()
-  return (
-    <Stack screenOptions={{ ...rootBackground, ...statusBar }}>
+  const packOptions = (pack.useScreenOptions ?? noScreenOptions)()
+  // Over a backdrop every screen is transparent, and Android crossfades: its default push and pop hold
+  // the outgoing screen opaque for ~450ms while the new one slides over it, which would show Home
+  // straight through a transparent play screen. iOS keeps its own push.
+  const backdropOptions = Backdrop ? { contentStyle: TRANSPARENT_CONTENT, animation: Platform.select({ android: 'fade' as const }) } : undefined
+  const playOptions = useCallback(
+    ({ route }: { route: { params?: object } }) => {
+      const id = (route.params as { game?: string } | undefined)?.game
+      return pack.games.some((g) => g.id === id && g.keepStatusBar) ? KEEP_STATUS_BAR_OPTIONS : PLAY_OPTIONS
+    },
+    [pack.games]
+  )
+  const navigationTheme = useMemo(() => (Backdrop ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: 'transparent' } } : null), [Backdrop])
+  const stack = (
+    <Stack screenOptions={{ ...rootBackground, ...statusBar, ...backdropOptions, ...packOptions }}>
       <Stack.Screen name='index' />
-      <Stack.Screen name='play/[game]' options={PLAY_OPTIONS} />
+      <Stack.Screen name='play/[game]' options={playOptions} />
     </Stack>
+  )
+  if (!Backdrop || !navigationTheme) return stack
+  return (
+    <View style={styles.root}>
+      <Backdrop />
+      <NavigationThemeProvider value={navigationTheme}>{stack}</NavigationThemeProvider>
+    </View>
   )
 }
 
@@ -77,10 +117,15 @@ function AppStack() {
 // committed orientation survive navigation. deviceMotion is the app's own expo-sensors import, handed
 // in because @tastic/core never imports expo-sensors itself (apps without tilt tracking would
 // otherwise need it installed just to bundle).
+//
+// portraitWhileKeyboard (PackDefinition.portraitWhileKeyboard): the software keyboard can't turn with a
+// faked rotation, so a pack that has the player type sideways (a profile's name) reads portrait while
+// it's up.
 function OrientationBridge({ children }: { children: ReactNode }) {
   const { settings, setSettings } = useAppSettings()
+  const { portraitWhileKeyboard } = usePack()
   return (
-    <OrientationProvider deviceMotion={DeviceMotion} freezeWhileLocked lockInitialValue={{ locked: settings.lockOrientation, rotation: settings.lockedRotation }} onLockChange={(next) => setSettings({ lockOrientation: next.locked, lockedRotation: next.rotation })}>
+    <OrientationProvider deviceMotion={DeviceMotion} freezeWhileLocked lockInitialValue={{ locked: settings.lockOrientation, rotation: settings.lockedRotation }} onLockChange={(next) => setSettings({ lockOrientation: next.locked, lockedRotation: next.rotation })} portraitWhileKeyboard={portraitWhileKeyboard}>
       {children}
     </OrientationProvider>
   )
@@ -104,10 +149,14 @@ function GatedApp({ children }: { children: ReactNode }) {
 // follow the same setting as every other haptic in the app. Today they can't fire anyway (the only
 // controls that tick, the history and clear buttons, are off below), but this keeps it that way if
 // either is ever shown. Must render inside Providers, whose FeedbackBridge provides the setting.
+//
+// A pack with its own Toaster gets no Paper here: with Paper the toaster draws through a Paper Portal,
+// which would take its toasts out of the turned frame PackToaster lays them in.
 function HapticGatedToastProvider({ children }: { children: ReactNode }) {
   const { settings } = useHapticSettings()
+  const { Toaster: PackToasterComponent } = usePack()
   return (
-    <ToastProvider haptics={settings.vibrate ? Haptics : undefined} paper={RNPaper}>
+    <ToastProvider haptics={settings.vibrate ? Haptics : undefined} paper={PackToasterComponent ? undefined : RNPaper}>
       {children}
     </ToastProvider>
   )
@@ -125,9 +174,40 @@ function RotatingToaster() {
   return <Toaster historyButton={null} clearButton={null} limit={3} renderFrame={renderFrame} />
 }
 
-// Every game's own root provider (its stats and achievements context), nested in pack order.
-function GameProviders({ games, children }: { games: readonly GameDefinition[]; children: ReactNode }) {
-  return games.reduceRight<ReactNode>((inner, game) => <game.Provider key={game.id}>{inner}</game.Provider>, children)
+// The pack's own toaster (PackDefinition.Toaster), laid over the whole app in a frame turned with the
+// phone: passThrough, so only a toast claims a touch over the stack, and rotatedSafeArea, so the
+// toaster's own safe-area reading lands on the frame's edges. The absoluteFill wrapper takes the frame
+// out of the layout beside the stack.
+function PackToaster({ Toaster: PackToasterComponent }: { Toaster: NonNullable<PackDefinition['Toaster']> }) {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents='box-none'>
+      <RotatedFrame rotatedSafeArea passThrough>
+        <PackToasterComponent />
+      </RotatedFrame>
+    </View>
+  )
+}
+
+// Every game's own root provider (its stats and achievements context), nested in pack order. A game
+// without one adds nothing.
+function GameProviders({ games, children }: { games: readonly PackGameDefinition[]; children: ReactNode }) {
+  return games.reduceRight<ReactNode>((inner, game) => (game.Provider ? <game.Provider key={game.id}>{inner}</game.Provider> : inner), children)
+}
+
+// How every profile color is drawn (PackDefinition.previewColor), in the live mode: inside Theme for
+// the `dark` read. A pack without it draws the colors as they are, with no provider.
+function PreviewColors({ previewColor, children }: { previewColor: NonNullable<PackDefinition['previewColor']>; children: ReactNode }) {
+  const { dark } = useAutoPaperTheme()
+  const preview = useCallback((hex: string) => previewColor(hex, dark), [previewColor, dark])
+  return <ProfileColorProvider preview={preview}>{children}</ProfileColorProvider>
+}
+
+// The pack's own root pieces that sit inside the store, Theme and every provider above:
+// its color preview around everything, and its own Provider around How to Play and the stack.
+function PackRoot({ pack, children }: { pack: PackDefinition; children: ReactNode }) {
+  const { Provider, previewColor } = pack
+  const inner = Provider ? <Provider>{children}</Provider> : children
+  return previewColor ? <PreviewColors previewColor={previewColor}>{inner}</PreviewColors> : <>{inner}</>
 }
 
 interface RootLayoutProps {
@@ -149,26 +229,28 @@ export function RootLayout({ pack, store, persistor }: RootLayoutProps) {
                   it mounts) is the saved one. */}
                   <LastActiveGameProvider>
                     <GameProviders games={pack.games}>
-                      <GatedApp>
-                        <OrientationBridge>
-                          <HapticGatedToastProvider>
-                            {/* Wraps the stack (rather than sitting beside it like UpdateDialog)
+                      <PackRoot pack={pack}>
+                        <GatedApp>
+                          <OrientationBridge>
+                            <HapticGatedToastProvider>
+                              {/* Wraps the stack (rather than sitting beside it like UpdateDialog)
                             because Home's tiles and the loadout's How to Play row reach it through
                             context (see GuideHost). Inside the toast provider and OrientationBridge
                             because the card renders through a Portal and rotates with the shared
                             reading, and inside the gate so it mounts together with Home rather than
                             before it. */}
-                            <GuideHost>
-                              <AppStack />
-                            </GuideHost>
-                            {/* historyButton/clearButton off: there's no toast history to open, and a
+                              <GuideHost>
+                                <AppStack />
+                              </GuideHost>
+                              {/* historyButton/clearButton off: there's no toast history to open, and a
                             control row for it above the toast stack would go nowhere. limit pins the
                             package's current default (3) so a future toaster release can't change it. */}
-                            <RotatingToaster />
-                            <UpdateDialog />
-                          </HapticGatedToastProvider>
-                        </OrientationBridge>
-                      </GatedApp>
+                              {pack.Toaster ? <PackToaster Toaster={pack.Toaster} /> : <RotatingToaster />}
+                              <UpdateDialog />
+                            </HapticGatedToastProvider>
+                          </OrientationBridge>
+                        </GatedApp>
+                      </PackRoot>
                     </GameProviders>
                   </LastActiveGameProvider>
                 </ProfilesProvider>

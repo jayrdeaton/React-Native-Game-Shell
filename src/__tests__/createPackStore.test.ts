@@ -1,7 +1,7 @@
 import type { UnknownAction } from 'redux'
 import type { PersistedState } from 'redux-persist'
 
-import type { PackStoreSource } from '../redux/createPackStore'
+import type { PackStoreConfig, PackStoreSource } from '../redux/createPackStore'
 
 type StoreModule = typeof import('../redux/createPackStore')
 type LiveplayModule = typeof import('../redux/liveplaySlice')
@@ -17,7 +17,7 @@ const rootBlob = (slices: Record<string, unknown>) => JSON.stringify(Object.from
 
 // Builds the store against a fresh in-memory AsyncStorage mock seeded with `items`, and waits for it
 // to rehydrate.
-async function launch(pack: PackStoreSource, items: Record<string, string> = {}, migrate?: (state: PersistedState, version: number) => Promise<PersistedState>) {
+async function launch(pack: PackStoreSource, items: Record<string, string> = {}, migrate?: (state: PersistedState, version: number) => Promise<PersistedState>, config: Omit<PackStoreConfig, 'keyPrefix' | 'migrate'> = {}) {
   let loaded: StoreModule | undefined
   let liveplay: LiveplayModule | undefined
   let storage: AsyncStorage | undefined
@@ -29,7 +29,7 @@ async function launch(pack: PackStoreSource, items: Record<string, string> = {},
     loaded = require('../redux/createPackStore') as StoreModule
     liveplay = require('../redux/liveplaySlice') as LiveplayModule
   })
-  const { persistor, store } = (loaded as StoreModule).createPackStore(pack, { keyPrefix: 'test:', migrate })
+  const { persistor, store } = (loaded as StoreModule).createPackStore(pack, { keyPrefix: 'test:', migrate, ...config })
   await new Promise<void>((resolve) => {
     if (persistor.getState().bootstrapped) resolve()
     else persistor.subscribe(() => persistor.getState().bootstrapped && resolve())
@@ -117,5 +117,53 @@ describe('createPackStore', () => {
 
     expect(migrate).toHaveBeenCalledTimes(1)
     expect(store.getState().opponent).toEqual({ seatTwo: 'person' })
+  })
+
+  it("starts the theme on what the pack's seatTheme makes of seat 1's color, where it has one", async () => {
+    const seatTheme = jest.fn((colors: Record<1 | 2, string>, dark: boolean) => ({ color: `${colors[1]}-${dark ? 'dark' : 'light'}`, harmony: 'triadic' as const }))
+    const { store } = await launch({ ...PACK, seatTheme })
+
+    expect(store.getState().theme).toEqual(expect.objectContaining({ appearance: 'system', color: '#4caf50-light', harmony: 'triadic' }))
+    expect((await launch({ ...PACK, appearance: 'dark', seatTheme })).store.getState().theme.color).toBe('#4caf50-dark')
+  })
+
+  it('keeps a blacklisted key (one that persists itself) out of the root entry, still in the store', async () => {
+    const savesReducer = (state: { board: string } = { board: 'dealt' }) => state
+    const { store, storage } = await launch({ ...PACK, reducers: { gameInProgress: savesReducer } }, {}, undefined, { blacklist: ['gameInProgress'] })
+
+    expect(root(store.getState()).gameInProgress).toEqual({ board: 'dealt' })
+    expect(await savedSlices(storage)).not.toContain('gameInProgress')
+    expect(await savedSlices(storage)).not.toContain('liveplay')
+    expect(await savedSlices(storage)).toContain('theme')
+  })
+
+  it('skips the serializability check under the paths the pack names', async () => {
+    // A value the dev check would flag (a function) under a key the pack keeps out of it.
+    const holdReducer = (state: { fn: (() => void) | null } = { fn: null }, action: UnknownAction) => (action.type === 'test/hold' ? { fn: () => {} } : state)
+    const errors = jest.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const ignored = await launch({ ...PACK, reducers: { held: holdReducer } }, {}, undefined, { blacklist: ['held'], serializableIgnoredPaths: ['held'] })
+      ignored.store.dispatch({ type: 'test/hold' })
+      expect(errors).not.toHaveBeenCalled()
+
+      const checked = await launch({ ...PACK, reducers: { held: holdReducer } }, {}, undefined, { blacklist: ['held'] })
+      checked.store.dispatch({ type: 'test/hold' })
+      expect(errors).toHaveBeenCalledWith(expect.stringContaining('non-serializable value was detected in the state, in the path: `held.fn`'), expect.anything(), expect.anything())
+    } finally {
+      errors.mockRestore()
+    }
+  })
+
+  it("runs the pack's own middleware on every action, after the shell's", async () => {
+    const seen: string[] = []
+    const middleware = () => (next: (action: unknown) => unknown) => (action: unknown) => {
+      seen.push((action as UnknownAction).type)
+      return next(action)
+    }
+    const { store } = await launch(PACK, {}, undefined, { middleware: [middleware] })
+    store.dispatch({ type: 'test/fast' })
+
+    expect(seen).toContain('test/fast')
+    expect(root(store.getState()).testSettings).toEqual({ speed: 'fast' })
   })
 })

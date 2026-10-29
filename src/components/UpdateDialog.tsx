@@ -1,6 +1,6 @@
 import { useUpdateErrorToast } from '@rific/toaster'
 import { useRotation } from '@tastic/core'
-import { UpdateDialog as SharedUpdateDialog } from '@tastic/hud'
+import { UpdateDialog as SharedUpdateDialog } from '@tastic/hud/chrome'
 
 // Thin bridge onto the fleet-shared @tastic/hud UpdateDialog, which now owns the useUpdater()
 // instance, the manifest/confirm bridging, and the themed ConfirmDialog rendering this file used

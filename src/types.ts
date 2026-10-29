@@ -1,9 +1,11 @@
-import type { ThemeAppearance } from '@rific/auto-paper'
+import type { ThemeAppearance, ThemeSettings } from '@rific/auto-paper'
 import type { ViewRotation } from '@tastic/core'
-import type { MenuOption, PopoverHost } from '@tastic/hud'
+import type { AlignResult, PopoverHost } from '@tastic/hud/chrome'
 import type { GuideStep } from '@tastic/hud/guide'
+import type { MenuOption } from '@tastic/hud/lobby'
 import type { FontSource } from 'expo-font'
-import type { ComponentType, ReactNode } from 'react'
+import type { Stack } from 'expo-router'
+import type { ComponentProps, ComponentType, ReactNode } from 'react'
 import type { Action, Reducer } from 'redux'
 
 import type { ShellState } from './redux/shellState'
@@ -79,6 +81,11 @@ export interface GameLoadout {
   cpuDifficulty?: { value: string; options: MenuOption<string>[]; onChange: (value: string) => void }
 }
 
+// The id a guest's stats are kept under where a pack keeps them (PackDefinition.guestStats): the one
+// player who isn't a profile, in a pack for one player at a time. Not seatPlayerKey's `guest:1`, which
+// tells two guests at one table apart.
+export const GUEST_PLAYER_ID = 'guest'
+
 // What a game's How to Play cards are built from: the live settings (through the game's own
 // selector, so the guide host never has to know their shape), how seat 2 is set up, and whether
 // the device is touch-first.
@@ -113,12 +120,30 @@ export interface GamePreviewProps {
   dark: boolean
 }
 
+// The pack's own How to Play (PackDefinition.guide): cards that teach every game in the pack at once,
+// shown on Home's first launch and replayed from Home's Settings. Its seen version is a key of the
+// pack's own (hud's createGuideSlice), so a pack keeps whatever it already saved.
+export interface PackGuide {
+  version: number
+  selectVersionSeen: (state: ShellState) => number
+  markSeen: (version: number) => Action
+  getSteps: (context: { touch: boolean }) => GuideStep[]
+}
+
+// A game's rules sheet (GameDefinition.Rules), opened from its tile's rules button on Home. It renders
+// through a Paper Portal into a host Home mounts inside its turned frame, so it's already turned with it.
+export interface GameRulesProps {
+  visible: boolean
+  onDismiss: () => void
+}
+
 export interface GameDefinition {
   id: string
   title: string
   // One line under the tile's name on Home.
   blurb: string
-  icon: ComponentType<GameIconProps>
+  // Left out only by a game with a Preview, which Home draws in its place.
+  icon?: ComponentType<GameIconProps>
   // Drawn on Home in place of the icon, a frame after Home first paints (a preview is far more to
   // draw than an icon). While any game in the pack has one, Home lays its games out as tiles: rows
   // with the preview at their start, and a grid beside the hero on a wide screen. A game without one
@@ -134,8 +159,9 @@ export interface GameDefinition {
   twoPlayerSeats?: { faceToFaceOnWeb: boolean; followUpsideDown: boolean }
   // The store keys this game mounts (settings, achievements, guide), merged into the pack's store.
   reducers: Record<string, Reducer>
-  // Mounted at the app root for the game's lifetime (its stats and achievements context).
-  Provider: ComponentType<{ children: ReactNode }>
+  // Mounted at the app root for the game's lifetime (its stats and achievements context). Left out by
+  // a game whose stats live in the pack's own (PackDefinition.Provider).
+  Provider?: ComponentType<{ children: ReactNode }>
   // Left out by a game with nothing to set up before it starts: Home opens its play screen
   // straight away (after its How to Play the first time), and its rule variants are rows in its
   // play screen's own Settings (SettingsDialog's children).
@@ -146,14 +172,33 @@ export interface GameDefinition {
   // board: the shell only remembers which game it was (redux/lastActiveGameSlice.ts). A match that
   // isn't saved (liveplay) shouldn't opt in, or a relaunch would open a fresh one.
   resumable?: boolean
+  // The play screen keeps the status bar while the phone is held upright. Unset, the bar is hidden on
+  // every play screen for the whole round, whatever the angle; set, it's hidden only while the
+  // content is turned, as on every other screen.
+  keepStatusBar?: boolean
   // The game's stats sections and its achievement list for the stats screen, for one profile
   // (null is Everyone).
   StatsSections: ComponentType<{ profileId: string | null }>
-  AchievementList: ComponentType<{ profileId: string | null }>
-  // Clears the game's stats and achievements (the stats screen's Reset).
-  resetStats: () => Action
+  // Left out by a game whose achievements are in the pack's one list (PackDefinition.AchievementList).
+  AchievementList?: ComponentType<{ profileId: string | null }>
+  // Clears the game's stats and achievements (the stats screen's Reset). Left out by a game whose stats
+  // the pack resets itself (PackDefinition.resetStats).
+  resetStats?: () => Action
+  // The game's own How to Play cards: shown the first time its tile is picked, and from its rules
+  // button and its loadout's Settings.
   guide: GameGuide
+  // The rules sheet its tile's rules button opens, in place of its How to Play cards.
+  Rules?: ComponentType<GameRulesProps>
 }
+
+// A game with no How to Play cards of its own, taught by the pack's own (PackDefinition.guide): its
+// tile opens without cards the first time, and its rules button shows its Rules or nothing. Its own type
+// rather than an optional `guide` on GameDefinition, so a pack's code that reads its own games' cards
+// (DuelTastic's packGuides test) keeps compiling.
+export type GuidelessGameDefinition = Omit<GameDefinition, 'guide'> & { guide?: undefined }
+
+// Any game a pack holds: one with How to Play cards of its own, or one without.
+export type PackGameDefinition = GameDefinition | GuidelessGameDefinition
 
 // What Home hands the pack's hero (PackDefinition.HeroTitle).
 export interface HeroTitleProps {
@@ -180,13 +225,41 @@ export interface PackStatsSectionsProps {
   gameId: string | null
 }
 
+// The stack's screen options (expo-router's Stack), as an object: what PackDefinition.useScreenOptions
+// returns.
+export type StackScreenOptions = Exclude<NonNullable<ComponentProps<typeof Stack>['screenOptions']>, (...args: never[]) => unknown>
+
+// The two sounds feedback-press plays on every button press (PackDefinition.useFeedbackSounds): a tap,
+// and a refused or notifying press.
+export interface FeedbackSounds {
+  selection: () => void
+  notification: () => void
+}
+
+// A tab of the pack's own on the stats screen (PackDefinition.statsTabs), between Stats and
+// Achievements, handed the screen's two filters.
+export interface PackStatsTab {
+  value: string
+  label: string
+  Content: ComponentType<PackStatsSectionsProps>
+}
+
+// The stats screen's Reset, where the pack resets stats itself (PackDefinition.resetStats). It follows
+// the player picker: one player's (a profile id, or GUEST_PLAYER_ID), or everyone's (null).
+export interface PackStatsReset {
+  useReset: () => (profileId: string | null) => void
+  // The button, the confirm's title and its body, for a player's name (Guest for a guest) or null for
+  // Everyone.
+  labels: (name: string | null) => { label: string; title: string; body: string }
+}
+
 export interface PackDefinition {
   name: string
   // The Home wordmark's two lines.
   wordmark: readonly [string, string]
   // A seat's color pick for a profile is kept for this pack only; the seat button says so.
   colorCaption: string
-  games: readonly GameDefinition[]
+  games: readonly PackGameDefinition[]
   // Player 1's and player 2's own default colors. They seed the theme's primary and secondary (the
   // tertiary is derived from them, see shellState.ts) and the guest and CPU colors a fresh install
   // starts with (seatColorsSlice.ts), so a fresh install's live theme and its remembered colors agree.
@@ -213,4 +286,64 @@ export interface PackDefinition {
   // A section of the pack's own at the top of the stats screen's Stats tab, across its games (a
   // calendar of play), above each game's own StatsSections. It follows the screen's two filters.
   StatsSections?: ComponentType<PackStatsSectionsProps>
+
+  // A table drawn once behind the whole stack (a felt), seen through every screen: the stack's own
+  // layers go transparent, and Home, the stats screen and Profiles draw on it in `foreground`.
+  Backdrop?: ComponentType
+  // The text and icon color of what Home, the stats screen and Profiles draw straight on the screen's
+  // background (the hero, the corner buttons, headers). Unset is black or white with the theme.
+  foreground?: string
+  // Mounted once around How to Play and the stack, inside the store, Theme, ProfilesProvider and every
+  // game's Provider: a context of the pack's own (one stats context across its games).
+  Provider?: ComponentType<{ children: ReactNode }>
+  // Merged into the stack's screen options after the shell's own (a status bar style, a crossfade).
+  useScreenOptions?: () => StackScreenOptions
+  // The two sounds every button plays, in place of the shell's own.
+  useFeedbackSounds?: () => FeedbackSounds
+  // The pack's own toaster, drawn in a frame turned with the phone (with the safe-area insets turned
+  // onto the frame's edges) in place of the shell's. It renders inline: the toast provider is given no
+  // Paper, so nothing portals it out of the frame.
+  Toaster?: ComponentType
+  // Every screen reads upright while the software keyboard is up (@tastic/core's OrientationProvider),
+  // for typing a profile's name with the phone sideways.
+  portraitWhileKeyboard?: boolean
+  // false leaves Edge Guard out of Settings (a pack with no edge controls and no Edge Guard plugin).
+  edgeGuard?: boolean
+  // The theme seat 1's color makes (a muted seed with a harmony), applied whenever the seats' colors or
+  // dark mode change and as a fresh install's theme, in place of a triad of the raw seat colors. With it,
+  // each seat's color is read from the seat colors rather than from the theme.
+  seatTheme?: (colors: Record<Seat, string>, dark: boolean) => Pick<ThemeSettings, 'color' | 'harmony'>
+  // How every profile color is drawn (the button's chip, the swatches, each ProfileChip): mounted as
+  // @tastic/profile's ProfileColorProvider. The saved colors stay as picked.
+  previewColor?: (hex: string, dark: boolean) => string
+  // The pack's own How to Play: shown on Home's first launch (held back while a cold launch resumes a
+  // game) and from Home's Settings, never in a play screen.
+  guide?: PackGuide
+  // Seat 1's button: the chip's label for a guest (default 'P1') and the guest row's in its menu
+  // (default @tastic/profile's).
+  guestLabel?: string
+  nullLabel?: string
+  // The stats screen keeps a guest's stats under GUEST_PLAYER_ID: a Guest entry in the player picker
+  // once a profile exists, and the screen opens on whoever is in seat 1.
+  guestStats?: boolean
+  // One achievement list across the pack's games, on the Achievements tab (the game picker hidden there).
+  AchievementList?: ComponentType<{ profileId: string | null }>
+  // Tabs of the pack's own between Stats and Achievements.
+  statsTabs?: readonly PackStatsTab[]
+  // The stats screen's Reset, following the player picker rather than the game picker.
+  resetStats?: PackStatsReset
+  // false leaves out each game's name over its sections on All Games, where its sections name it.
+  statsGameTitles?: boolean
+  // A new profile's starting color on Profiles. Unset is auto-paper's first swatch.
+  newProfileColor?: string
+  // Where a picker's menu opens (its alignOverride) on Home (seat 1's button), the stats screen (its two
+  // pickers) and Profiles (a profile's color swatch). hud's own placement measures a turned button
+  // against the upright window, so with the phone held sideways it can pick the side with no room and
+  // run the menu off the screen (Solitaire's useFrameAutoAlign places it in the turned frame instead).
+  // `open` is whether this picker's menu is open, the size is its content's, and `maxContentWidth` is a
+  // capped column's width the menu stays inside (Profiles' roster). Unset is hud's own placement.
+  usePickerAlign?: PickerAlign
 }
+
+// What PackDefinition.usePickerAlign is: a hook, called on every render of the screen it serves.
+export type PickerAlign = (open: boolean, contentWidth: number, contentHeight: number, options?: { maxContentWidth?: number }) => AlignResult

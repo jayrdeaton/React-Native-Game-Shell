@@ -2,7 +2,7 @@
 // and store, and every screen, game and shared piece reads the pack through usePack().
 export { PackProvider, usePack, usePackGame } from './PackContext'
 export { RootLayout } from './RootLayout'
-export { type GameDefinition, type GameGuide, type GameIconProps, type GameLoadout, type GamePreviewProps, type HeroTitleProps, humanSeatsFor, type LoadoutOptionsProps, type PackDefinition, type PackStatsSectionsProps, type RoundMode, roundModeFor, type Seat, type SeatControlLook, type SeatTwo, seatTwoFor } from './types'
+export { type FeedbackSounds, type GameDefinition, type GameGuide, type GameIconProps, type GameLoadout, type GamePreviewProps, type GameRulesProps, GUEST_PLAYER_ID, type GuidelessGameDefinition, type HeroTitleProps, humanSeatsFor, type LoadoutOptionsProps, type PackDefinition, type PackGameDefinition, type PackGuide, type PackStatsReset, type PackStatsSectionsProps, type PackStatsTab, type PickerAlign, type RoundMode, roundModeFor, type Seat, type SeatControlLook, type SeatTwo, seatTwoFor, type StackScreenOptions } from './types'
 
 // The screens behind an app's routes (src/app/ stays in the app: expo-router only reads routes there).
 export { LoadoutRoute, PlayRoute } from './screens/GameRoute'

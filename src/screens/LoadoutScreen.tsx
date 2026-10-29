@@ -1,11 +1,12 @@
 import { defaultColors, useAutoPaperTheme } from '@rific/auto-paper'
 import { FakeLandscapeView, getViewRotation, rotateInsets, useOrientationState } from '@tastic/core'
-import { CornerActionButtons, PlayerSetupPanel, PressAwayOverlay, ReadyButton, SharedActionBand, usePopoverHost } from '@tastic/hud'
+import { CornerActionButtons, PressAwayOverlay, usePopoverHost } from '@tastic/hud/chrome'
+import { PlayerSetupPanel, ReadyButton, SharedActionBand } from '@tastic/hud/lobby'
 import type { Profile } from '@tastic/profile'
 import { DualZoneLayout, needsSharedNeutralZone, useDualZoneLayout } from '@tastic/split-screen'
 import { router, useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Platform, StyleSheet, View } from 'react-native'
+import { Platform, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useDispatch } from 'react-redux'
@@ -20,7 +21,8 @@ import { useSeatColors } from '../hooks/useSeatColors'
 import { safeBack } from '../navigation'
 import { usePack } from '../PackContext'
 import { liveplayActions } from '../redux/liveplaySlice'
-import { type GameDefinition, humanSeatsFor, roundModeFor, type Seat, type SeatTwo, seatTwoFor } from '../types'
+import { playHref, PROFILES_HREF } from '../routes'
+import { humanSeatsFor, type PackGameDefinition, roundModeFor, type Seat, type SeatTwo, seatTwoFor } from '../types'
 
 // The player-panel area: whenever a real device rotation changes orientationMode or which physical
 // side P1 lands on, the panels fade out, the layout underneath swaps while invisible, then they fade
@@ -31,7 +33,7 @@ const PANEL_SWAP_FADE_MS = 180
 
 // A game that has a loadout (GameDefinition.useLoadout): the loadout route sends any other straight
 // to its play screen.
-export type LoadoutGame = GameDefinition & Required<Pick<GameDefinition, 'useLoadout'>>
+export type LoadoutGame = PackGameDefinition & Required<Pick<PackGameDefinition, 'useLoadout'>>
 
 // Every game's loadout: seat 1 (the player picked on Home), seat 2 (the CPU, a second person, or
 // nobody, from seat 2's own button, or no button in a game for one player), the game's own match
@@ -66,6 +68,10 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   const fixedSeats = p2IsHuman && (!!game.twoPlayerSeats?.faceToFaceOnWeb || Platform.OS !== 'web')
   const fixedUpsideDown = !!game.twoPlayerSeats?.followUpsideDown && orientationMode === 'faceToFace' && upsideDown
   const { panelLayout, panelFadeStyle } = useDualZoneLayout(fixedSeats ? 'faceToFace' : orientationMode, fixedSeats ? true : p1OnRight, fixedSeats || p1OnRightResolved, fixedSeats ? fixedUpsideDown : upsideDown, PANEL_SWAP_FADE_MS)
+  // split-screen types the fade as a style for any component (useAnimatedStyle's DefaultStyle). An app
+  // whose types widen Text's style (Expo's react-native-web types, which a generated expo-env.d.ts pulls
+  // in, make its cursor any string) can't hand that to Animated.View. It only ever sets opacity.
+  const playersRowFade = panelFadeStyle as unknown as StyleProp<ViewStyle>
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Safe-area insets are relative to the device's fixed portrait frame; rotateInsets remaps them
@@ -113,7 +119,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   useEffect(() => {
     if (!humanSeats.every((s) => ready[s])) return
     dispatch(liveplayActions.setActiveRound({ game: game.id, mode, settings: roundSettingsRef.current }))
-    router.push({ pathname: '/play/[game]', params: { game: game.id } })
+    router.push(playHref(game.id))
   }, [ready, humanSeats, game.id, mode, dispatch])
 
   const bg = dark ? '#000000' : '#FFFFFF'
@@ -166,7 +172,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
 
   const controlLook = { accentColor: themeColors.tertiary, mutedColor: fgMuted, dark, rotation }
   const p1Control = loadout.seatControl(1, controlsHost, { ...controlLook, seatColor: p1Color })
-  const p1Panel = <PlayerSetupPanel idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} dark={dark} showReadyButton={showReadyButton} secondPicker={p1Control} secondPickerId={p1Control ? 'p1-control' : undefined} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel='P1' onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push('/profiles')} />
+  const p1Panel = <PlayerSetupPanel idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} dark={dark} showReadyButton={showReadyButton} secondPicker={p1Control} secondPickerId={p1Control ? 'p1-control' : undefined} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel='P1' onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(PROFILES_HREF)} />
   const p2Control = p2IsHuman ? loadout.seatControl(2, p2Host, { ...controlLook, seatColor: p2Color }) : undefined
   // A game for one player (no seatTwo) has no seat 2 button: seat 1's panel stands alone.
   const p2Panel = game.seatTwo && <SeatTwoPanel idPrefix='p2' host={p2Host} choices={game.seatTwo} seatTwo={seatTwo} onSeatTwoChange={changeSeatTwo} cpuDifficulty={loadout.cpuDifficulty} profiles={profiles} selectedProfileId={lastSelected[2]} onProfileSelect={handleP2ProfileSelect} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} dark={dark} secondPicker={p2Control} secondPickerId={p2Control ? 'p2-control' : undefined} ready={ready[2]} onToggleReady={() => setReady((r) => ({ ...r, 2: !r[2] }))} showReadyButton={showReadyButton} />
@@ -202,7 +208,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
         ) : (
           <View style={styles.stackedZone}>
             {sharedControls}
-            <Animated.View style={[styles.playersRow, anyPlayerPickerOpen && styles.playersRowOpen, panelFadeStyle]}>
+            <Animated.View style={[styles.playersRow, anyPlayerPickerOpen && styles.playersRowOpen, playersRowFade]}>
               {!isPortrait && panelLayout.p1OnRight ? p2Panel : p1Panel}
               {!isPortrait && panelLayout.p1OnRight ? p1Panel : p2Panel}
             </Animated.View>

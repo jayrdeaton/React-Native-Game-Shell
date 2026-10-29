@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useContext } from 'react'
 
-import type { GameDefinition, PackDefinition } from './types'
+import type { PackDefinition, PackGameDefinition } from './types'
 
 // The pack the shell is running: handed in once at the root (see RootLayout), so nothing in shell/
 // ever imports pack.ts or a game. Games reach the shell only through this registry.
@@ -17,6 +17,6 @@ export function usePack(): PackDefinition {
 }
 
 // A game by id, or undefined for an id the pack doesn't have (a stale link).
-export function usePackGame(id: string | undefined): GameDefinition | undefined {
+export function usePackGame(id: string | undefined): PackGameDefinition | undefined {
   return usePack().games.find((g) => g.id === id)
 }

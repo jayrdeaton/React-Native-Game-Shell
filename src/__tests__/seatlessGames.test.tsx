@@ -23,19 +23,19 @@ jest.mock('expo-router', () => {
     useFocusEffect: (effect: () => void) => useEffect(effect, [effect])
   }
 })
-jest.mock('../components/GuideHost', () => ({ ...jest.requireActual('../components/GuideHost'), useGameGuide: () => ({ openFirstTime: jest.fn(), openFor: jest.fn() }) }))
+jest.mock('../components/GuideHost', () => ({ ...jest.requireActual('../components/GuideHost'), useGameGuide: () => ({ openFirstTime: jest.fn(), openFor: jest.fn(), openPack: jest.fn(), autoShowPack: jest.fn() }) }))
 jest.mock('../components/SettingsDialog', () => ({ SettingsDialog: () => null }))
 jest.mock('../hooks/useProfiles', () => ({ useProfiles: () => ({ profiles: [], lastSelected: { 1: null, 2: null }, selectProfile: jest.fn() }) }))
 jest.mock('../hooks/useSeatColors', () => ({ useSeatColors: () => ({ p1Color: '#2196f3', p2Color: '#f44336', handleP1ColorChange: jest.fn(), handleP2ColorChange: jest.fn() }) }))
-jest.mock('@tastic/hud', () => {
+jest.mock('@tastic/hud/lobby', () => {
   const { Pressable: RNPressable, View: RNView } = require('react-native')
   return {
-    ...jest.requireActual('@tastic/hud'),
+    ...jest.requireActual('@tastic/hud/lobby'),
     PlayerSetupPanel: () => <RNView testID='seat-1' />,
-    ReadyButton: ({ onToggleReady }: { onToggleReady: () => void }) => <RNPressable testID='ready' onPress={onToggleReady} />,
-    CornerActionButtons: () => null
+    ReadyButton: ({ onToggleReady }: { onToggleReady: () => void }) => <RNPressable testID='ready' onPress={onToggleReady} />
   }
 })
+jest.mock('@tastic/hud/chrome', () => ({ ...jest.requireActual('@tastic/hud/chrome'), CornerActionButtons: () => null }))
 // The panels' fade runs on Reanimated, which the package's mock doesn't animate: the layout follows
 // the reading at once, and 2 Player's two halves are both drawn.
 jest.mock('@tastic/split-screen', () => {
