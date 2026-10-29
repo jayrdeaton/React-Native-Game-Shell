@@ -11,8 +11,8 @@ routes. Built for two-seat packs (PuckTastic, DuelTastic), and since step 3 also
 (CardTastic): games for one player, games with no loadout, a resume, previews on Home (see "What a
 pack can leave out or add").
 
-Part of the `@tastic` package ecosystem. Not published yet: created 2026-10-28 (step 2 of the
-`@tastic/shell` plan in DuelTastic's `TODO.md`) from the `src/shell/` folder PuckTastic
+Part of the `@tastic` package ecosystem, on npm since 2026-10-29 (0.1.1). Created 2026-10-28
+(step 2 of the `@tastic/shell` plan in DuelTastic's `TODO.md`) from the `src/shell/` folder PuckTastic
 (`../PuckTastic`) and DuelTastic (`../DuelTastic`) each carried, which step 1 made byte-identical the
 same day. Neither app uses the package yet (switching them is step 4). Until then, **the two apps'
 `src/shell/` copies and this package are three copies of one thing**: a fix in one goes into all
@@ -48,11 +48,15 @@ workflow (`.github/workflows/publish.yml`) fires on `v*` tags and calls the flee
 `infinitetoken/Workflows/.github/workflows/npm-publish.yml@v1` (npm trusted publishing, OIDC, no
 token). `.github/workflows/ci.yml` calls the shared `npm-ci.yml@v1` on every PR and push to `main`.
 
-**The first release can't go through the workflow.** npm's trusted publishing is set per package on
-npmjs.com, which needs the package to exist: publish 0.1.0 by hand once (`npm publish`, from a clean
-`npm run verify`; `publishConfig.access` is already `public`), then add the GitHub repo
-(`jayrdeaton/React-Native-Game-Shell`, workflow `publish.yml`) as the package's trusted publisher, and
-every later version goes out by tag.
+**The first release went out by hand (2026-10-29).** npm's trusted publishing is set per package on
+npmjs.com, which needs the package to exist, so Jay published 0.1.0 with `npm publish` and then added
+the GitHub repo (`jayrdeaton/React-Native-Game-Shell`, workflow `publish.yml`) as its trusted
+publisher. npm holds a new package's first version for review: until it's released, npmjs.com shows a
+`0.0.0-stage` stub ("Temporary Holding Version") as `latest`, the registry answers 404, `npm stage list`
+shows nothing, and a tag for the held version fails in the workflow with "You cannot publish over the
+previously published versions" (the `v0.1.0` run). 0.1.0 came out of review minutes later. 0.1.1,
+which only bumps the version, is the first from the workflow (published by GitHub Actions, with
+provenance), and every later version goes out by tag the same way.
 
 ### Local development: a packed tarball, never yalc
 
