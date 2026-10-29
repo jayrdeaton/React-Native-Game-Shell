@@ -1,0 +1,15 @@
+{
+  "extends": "@infinitetoken/tsconfig/react-native",
+  "compilerOptions": {
+    // The preset's "react-native" condition is a Metro-bundling concern: the @rific/@tastic peers
+    // list "react-native" before "types" in their exports maps, so with it on, tsc would type-check
+    // their raw src/*.ts (and every peer of theirs) instead of reading dist/*.d.ts. tsc only needs
+    // types, so it falls through to "types", as in @tastic/hud.
+    // react-native-legacy-deep-imports is kept: it makes React Native 0.88 resolve its pre-strict
+    // types, the fleet's deferral of the strict ones (see @infinitetoken/tsconfig's TODO.md).
+    "customConditions": ["react-native-legacy-deep-imports"],
+    // The shell is app code: it reads React Native's __DEV__ (shellState.ts) and requires its sounds.
+    "types": ["jest", "node", "react-native"]
+  },
+  "include": ["src"]
+}
