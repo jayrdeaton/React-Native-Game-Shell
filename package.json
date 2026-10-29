@@ -1,6 +1,6 @@
 {
   "name": "@tastic/shell",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "The app around a pack of React Native games, two-seat or for one player: Home, the loadout, the stats screen, Profiles and Settings, the pack's Redux store and its root providers, driven by one PackDefinition",
   "keywords": [
     "react-native",
