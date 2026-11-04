@@ -288,10 +288,12 @@ export interface PackDefinition {
   StatsSections?: ComponentType<PackStatsSectionsProps>
 
   // A table drawn once behind the whole stack (a felt), seen through every screen: the stack's own
-  // layers go transparent, and Home, the stats screen and Profiles draw on it in `foreground`.
+  // layers go transparent, and Home, each loadout, the stats screen and Profiles draw on it in
+  // `foreground`, with their buttons on the theme's surface.
   Backdrop?: ComponentType
-  // The text and icon color of what Home, the stats screen and Profiles draw straight on the screen's
-  // background (the hero, the corner buttons, headers). Unset is black or white with the theme.
+  // The text and icon color of what Home, the loadouts, the stats screen and Profiles draw straight on
+  // the screen's background (the hero, the corner buttons, headers; a loadout's options at half of
+  // it). Unset is black or white with the theme.
   foreground?: string
   // Mounted once around How to Play and the stack, inside the store, Theme, ProfilesProvider and every
   // game's Provider: a context of the pack's own (one stats context across its games).
@@ -313,14 +315,15 @@ export interface PackDefinition {
   // dark mode change and as a fresh install's theme, in place of a triad of the raw seat colors. With it,
   // each seat's color is read from the seat colors rather than from the theme.
   seatTheme?: (colors: Record<Seat, string>, dark: boolean) => Pick<ThemeSettings, 'color' | 'harmony'>
-  // How every profile color is drawn (the button's chip, the swatches, each ProfileChip): mounted as
-  // @tastic/profile's ProfileColorProvider. The saved colors stay as picked.
+  // How every profile color is drawn (the seat buttons' chips on Home and in the loadouts, their
+  // swatches, a loadout's Ready button, each ProfileChip): mounted as @tastic/profile's
+  // ProfileColorProvider. The saved colors stay as picked.
   previewColor?: (hex: string, dark: boolean) => string
   // The pack's own How to Play: shown on Home's first launch (held back while a cold launch resumes a
   // game) and from Home's Settings, never in a play screen.
   guide?: PackGuide
-  // Seat 1's button: the chip's label for a guest (default 'P1') and the guest row's in its menu
-  // (default @tastic/profile's).
+  // Seat 1's button, on Home and in every loadout: the chip's label for a guest (default 'P1') and the
+  // guest row's in its menu (default @tastic/profile's).
   guestLabel?: string
   nullLabel?: string
   // The stats screen keeps a guest's stats under GUEST_PLAYER_ID: a Guest entry in the player picker
@@ -336,7 +339,8 @@ export interface PackDefinition {
   statsGameTitles?: boolean
   // A new profile's starting color on Profiles. Unset is auto-paper's first swatch.
   newProfileColor?: string
-  // Where a picker's menu opens (its alignOverride) on Home (seat 1's button), the stats screen (its two
+  // Where a picker's menu opens (its alignOverride) on Home (seat 1's button), a loadout's one-human row
+  // (both seat buttons; 2 Player keeps each menu in its own player's half), the stats screen (its two
   // pickers) and Profiles (a profile's color swatch). hud's own placement measures a turned button
   // against the upright window, so with the phone held sideways it can pick the side with no room and
   // run the menu off the screen (Solitaire's useFrameAutoAlign places it in the turned frame instead).

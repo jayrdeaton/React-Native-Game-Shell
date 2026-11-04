@@ -1,9 +1,9 @@
 import type { SeedColor } from '@rific/auto-paper'
-import type { PopoverHost } from '@tastic/hud/chrome'
+import type { AlignResult, PopoverHost } from '@tastic/hud/chrome'
 import { type MenuOption, ReadyButton, useZoneClampedAlign } from '@tastic/hud/lobby'
 import { getOptionPickerContentSize, OptionPicker, type OptionPickerOption, type Profile, type ProfilePickerColorSection } from '@tastic/profile'
 import { ReactNode, useMemo } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native'
 
 import type { SeatTwo } from '../types'
 
@@ -57,10 +57,19 @@ export interface SeatTwoPanelProps {
   ready?: boolean
   onToggleReady?: () => void
   showReadyButton?: boolean
+  // How the seat's color, and each profile's in the menu, is drawn (PackDefinition.previewColor), as
+  // PlayerSetupPanel's own previewValue: `color` and what onColorChange receives stay the saved values.
+  previewValue?: (hex: string) => string
+  // The button's trigger style (a surface behind its pill over the pack's backdrop).
+  triggerStyle?: StyleProp<ViewStyle>
+  // A placement hook of the pack's own for the menu, in place of the zone clamp (PlayerSetupPanel's
+  // useSeatPickerAlign): left unset inside a split-screen zone, and the same one for the panel's life.
+  usePickerAlign?: (open: boolean, contentWidth: number, contentHeight: number) => AlignResult
 }
 
-export function SeatTwoPanel({ idPrefix, host, choices, seatTwo, onSeatTwoChange, cpuDifficulty, profiles, selectedProfileId, onProfileSelect, color, onColorChange, swatches, takenColor, allowSwapTaken, colorCaption, dark, secondPicker, secondPickerId, ready, onToggleReady, showReadyButton = true }: SeatTwoPanelProps) {
+export function SeatTwoPanel({ idPrefix, host, choices, seatTwo, onSeatTwoChange, cpuDifficulty, profiles, selectedProfileId, onProfileSelect, color, onColorChange, swatches, takenColor, allowSwapTaken, colorCaption, dark, secondPicker, secondPickerId, ready, onToggleReady, showReadyButton = true, previewValue, triggerStyle, usePickerAlign }: SeatTwoPanelProps) {
   const isPerson = seatTwo === 'person'
+  const drawn = previewValue ? previewValue(color) : color
   const selectedProfile = isPerson ? (profiles.find((p) => p.id === selectedProfileId) ?? null) : null
 
   const cpuOptions = cpuDifficulty?.options
@@ -70,10 +79,10 @@ export function SeatTwoPanel({ idPrefix, host, choices, seatTwo, onSeatTwoChange
     if (choices.includes('nobody')) list.push({ value: NOBODY, label: 'Nobody', icon: NOBODY_ICON })
     if (choices.includes('person')) {
       list.push({ value: GUEST, label: 'Player 2', icon: GUEST_ICON })
-      list.push(...[...profiles].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: `${PROFILE_PREFIX}${p.id}`, label: p.name, icon: 'account', color: p.color })))
+      list.push(...[...profiles].sort((a, b) => a.name.localeCompare(b.name)).map((p) => ({ value: `${PROFILE_PREFIX}${p.id}`, label: p.name, icon: 'account', color: previewValue ? previewValue(p.color) : p.color })))
     }
     return list
-  }, [choices, cpuOptions, profiles])
+  }, [choices, cpuOptions, profiles, previewValue])
 
   const value = seatTwo === 'cpu' ? `${CPU_PREFIX}${cpuDifficulty?.value ?? ''}` : seatTwo === 'nobody' ? NOBODY : selectedProfile ? `${PROFILE_PREFIX}${selectedProfile.id}` : GUEST
   const icon = seatTwo === 'cpu' ? CPU_ICON : seatTwo === 'nobody' ? NOBODY_ICON : selectedProfile ? 'account' : GUEST_ICON
@@ -91,21 +100,23 @@ export function SeatTwoPanel({ idPrefix, host, choices, seatTwo, onSeatTwoChange
   }
 
   // Nobody has no color to pick: there's nothing of theirs on the board.
-  const colorSection: ProfilePickerColorSection | undefined = seatTwo === 'nobody' ? undefined : { value: color, onChange: onColorChange, swatches, takenValue: takenColor, allowSwapTaken, caption: selectedProfile ? colorCaption : undefined }
+  const colorSection: ProfilePickerColorSection | undefined = seatTwo === 'nobody' ? undefined : { value: color, onChange: onColorChange, swatches, takenValue: takenColor, allowSwapTaken, caption: selectedProfile ? colorCaption : undefined, previewValue }
 
   const pickerId = getSeatTwoPopoverId(idPrefix)
   const size = getOptionPickerContentSize(options.length, colorSection)
-  // Kept inside this player's half in 2 Player, like PlayerSetupPanel's own seat button.
-  const align = useZoneClampedAlign(host.openId === pickerId, size.width, size.height)
+  // Kept inside this player's half in 2 Player, like PlayerSetupPanel's own seat button, or placed by
+  // the pack's own hook where it's given one.
+  const useAlign = usePickerAlign ?? useZoneClampedAlign
+  const align = useAlign(host.openId === pickerId, size.width, size.height)
 
   const ownPopoverOpen = host.openId?.startsWith(`${idPrefix}-`) ?? false
   const pickerRowOpen = secondPickerId !== undefined && host.openId === secondPickerId
 
   return (
     <View style={[styles.panel, ownPopoverOpen && styles.panelOpen]}>
-      <OptionPicker id={pickerId} host={host} options={options} value={value} onChange={handleChange} color={color} dark={dark} icon={icon} colorSection={colorSection} alignOverride={align} />
+      <OptionPicker id={pickerId} host={host} options={options} value={value} onChange={handleChange} color={drawn} dark={dark} icon={icon} colorSection={colorSection} alignOverride={align} triggerStyle={triggerStyle} />
       {isPerson && secondPicker && <View style={[styles.pickerRow, pickerRowOpen && styles.pickerRowOpen]}>{secondPicker}</View>}
-      {isPerson && showReadyButton && onToggleReady && <ReadyButton color={color} ready={ready ?? false} onToggleReady={onToggleReady} />}
+      {isPerson && showReadyButton && onToggleReady && <ReadyButton color={drawn} ready={ready ?? false} onToggleReady={onToggleReady} />}
     </View>
   )
 }

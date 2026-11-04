@@ -109,8 +109,8 @@ PuckTastic and DuelTastic draw what they always did:
 
 | Field | |
 | --- | --- |
-| `Backdrop?` | A table drawn once behind the whole stack (Solitaire's felt). The stack's two layers go transparent (the screens' `contentStyle` and the navigation theme's `colors.background`, which React Navigation paints around every screen), the root window stays dark so light mode doesn't flash white on a push, Android's push and pop crossfade (its default holds the outgoing screen opaque), and Home, the stats screen and Profiles draw transparent, with their buttons and tabs on the theme's surface. |
-| `foreground?` | The color of what those three screens draw straight on the background (the hero, the corner buttons, headers). Unset is black or white with the theme. |
+| `Backdrop?` | A table drawn once behind the whole stack (Solitaire's felt). The stack's two layers go transparent (the screens' `contentStyle` and the navigation theme's `colors.background`, which React Navigation paints around every screen), the root window stays dark so light mode doesn't flash white on a push, Android's push and pop crossfade (its default holds the outgoing screen opaque), and Home, each loadout, the stats screen and Profiles draw transparent, with their buttons and tabs on the theme's surface. |
+| `foreground?` | The color of what those screens draw straight on the background (the hero, the corner buttons, headers), and at half strength a loadout's muted options. Unset is black or white with the theme. |
 | `Provider?` | Mounted once around How to Play and the stack, inside the store, the theme, profiles and every game's `Provider` (one stats context across the pack's games). |
 | `useScreenOptions?` | A hook returning stack screen options (`StackScreenOptions`), merged after the shell's own (a light status bar, Reduce Motion's crossfade). |
 | `useFeedbackSounds?` | A hook returning the two sounds every button plays (`FeedbackSounds`: `selection`, `notification`), in place of the shell's two wavs. |
@@ -118,16 +118,16 @@ PuckTastic and DuelTastic draw what they always did:
 | `portraitWhileKeyboard?` | Every screen reads upright while the software keyboard is up (`@tastic/core`'s `OrientationProvider`), for naming a profile sideways. |
 | `edgeGuard?` | `false` leaves Edge Guard out of Settings (no edge controls, no Edge Guard plugin). |
 | `seatTheme?` | `(colors, dark) => ({ color, harmony })`: the theme the seats' colors make (a muted seed from seat 1's color), applied whenever they or dark mode change and as a fresh install's theme, in place of a triad of the raw colors. With it, `useSeatColors` reads each seat's color from where it's remembered (`seatColors`) rather than from the theme. |
-| `previewColor?` | `(hex, dark) => string`: how every profile color is drawn (seat 1's button and swatches, each `ProfileChip`), mounted as `@tastic/profile`'s `ProfileColorProvider`. Saved colors stay as picked. |
+| `previewColor?` | `(hex, dark) => string`: how every profile color is drawn (the seat buttons and their swatches on Home and in the loadouts, a loadout's Ready button and seat controls, each `ProfileChip`), mounted as `@tastic/profile`'s `ProfileColorProvider`. Saved colors stay as picked. |
 | `guide?` | The pack's own How to Play (`PackGuide`: `version`, `selectVersionSeen`, `markSeen`, `getSteps({ touch })`), for cards that teach every game at once: shown on Home's first launch (never while a cold launch resumes a game), replayed from Home's Settings, never in a play screen. Its seen version is a key of the pack's own. |
-| `guestLabel?`, `nullLabel?` | Seat 1's button: the chip's label for a guest (default `'P1'`) and the guest row's in its menu. |
+| `guestLabel?`, `nullLabel?` | Seat 1's button on Home and in every loadout: the chip's label for a guest (default `'P1'`) and the guest row's in its menu. |
 | `guestStats?` | The stats screen keeps a guest's stats under `GUEST_PLAYER_ID` (`'guest'`): a Guest entry between Everyone and the profiles once a profile exists, and the screen opens on seat 1's player. Without it the screen opens on Everyone, where guests count. |
 | `AchievementList?` | One achievement list across the pack's games, on the Achievements tab, with the game picker hidden there. |
 | `statsTabs?` | Tabs of the pack's own between Stats and Achievements (`PackStatsTab`: `value`, `label`, `Content`, handed both filters). With them every tab is as wide as its label, with no icons, so three fit a phone. |
 | `resetStats?` | The stats screen's Reset where the pack resets stats itself (`PackStatsReset`: a `useReset` hook returning `(profileId) => void`, and the `labels` for a player's name, Guest, or `null` for Everyone). It follows the player picker, not the game picker. |
 | `statsGameTitles?` | `false` leaves each game's name off its sections on All Games, where the sections name it. |
 | `newProfileColor?` | A new profile's starting color on Profiles. Unset is auto-paper's first swatch. |
-| `usePickerAlign?` | `(open, contentWidth, contentHeight, options?) => AlignResult` (`PickerAlign`), a hook: where seat 1's menu on Home, the stats screen's two pickers and a profile's color swatch open. hud's own placement measures a turned button against the upright window, so with the phone held sideways it can run a menu off the screen (seen on the iOS simulator, 2026-10-29); a pack whose screens turn hands in a frame-aware one (Solitaire's `useFrameAutoAlign`). Profiles passes `{ maxContentWidth: 640 }`, its roster's column. Unset is hud's placement. |
+| `usePickerAlign?` | `(open, contentWidth, contentHeight, options?) => AlignResult` (`PickerAlign`), a hook: where seat 1's menu on Home, both seat buttons' menus in a loadout's one-human row (2 Player keeps each menu in its own player's half), the stats screen's two pickers and a profile's color swatch open. hud's own placement measures a turned button against the upright window, so with the phone held sideways it can run a menu off the screen (seen on the iOS simulator, 2026-10-29); a pack whose screens turn hands in a frame-aware one (Solitaire's `useFrameAutoAlign`). Profiles passes `{ maxContentWidth: 640 }`, its roster's column. Unset is hud's placement. |
 
 ### `GameDefinition`
 
@@ -204,7 +204,7 @@ became a package (the lower of the two where they differ).
 | `@rific/feedback-press` | >=0.13.1 | haptic and sound settings, the UI sounds |
 | `@rific/toaster` | >=0.10.1 | toasts (DuelTastic runs 0.12, PuckTastic 0.10) |
 | `@tastic/core` | >=0.14.0 | orientation, rotation, the status bar and root background |
-| `@tastic/hud` | >=0.26.0 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0), How to Play |
+| `@tastic/hud` | >=0.27.1 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0; 0.27.1's options for a pack drawn on its own backdrop), How to Play |
 | `@tastic/profile` | >=0.16.2 | profiles, the seat buttons, seat colors |
 | `@tastic/achievements` | >=0.6.0 | `createGameStats`, `forgetProfileAchievements` |
 | `@tastic/split-screen` | >=0.5.5 | the 2 Player loadout's two halves |

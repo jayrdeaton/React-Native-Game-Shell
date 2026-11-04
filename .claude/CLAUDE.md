@@ -278,6 +278,42 @@ and margins close a menu too) and hud's `RotatedFrame` (insets turned onto its e
 in its own Portal.Host at rotation 0, the column capped at 640pt in the wide layout); and Profiles turns
 with the phone in the same frame, roster capped at 640pt.
 
+## The loadout on a felt (0.3.0, 2026-11-04)
+
+Solitaire adds RatSlap, its first game with a loadout (seat 2 the CPU or a person), and the loadout
+ignored the options Home, the stats screen and Profiles already honored: it painted solid black or
+white and said P1 for a guest. Each option now reaches it only where the pack sets it, so PuckTastic
+and DuelTastic draw the same loadout. Needs **`@tastic/hud` 0.27.1** (`PlayerSetupPanel`'s
+`nullLabel`, `previewValue`, `triggerStyle` and `useSeatPickerAlign`; 0.27.0 is the same code, tagged
+while GitHub Actions was degraded, and its publish run never started, so it never reached npm). Built
+against hud's packed tarball, then released on hud 0.27.1 from npm (the peer floor `>=0.27.1`).
+
+- **`Backdrop`, `foreground`:** over a backdrop the screen is transparent; the corner buttons and 2
+  Player's shared band draw in `foreground`, and the options row and seat controls get half of it as
+  their `mutedColor` (`halfOf`, through auto-paper's `getRgb`; a color it can't read keeps the old
+  muted black or white). Both seat buttons sit on the theme's surface as Home's does (`triggerStyle`,
+  a 999 radius pill).
+- **`guestLabel`, `nullLabel`:** seat 1's panel, as Home's button (`'P1'` unset).
+- **`previewColor`:** seat 1's panel gets it as `previewValue` (its chip, Color row, swatches and Ready
+  button; the saved color stays the Color row's value), seat 2's `SeatTwoPanel` the same (its chip, Color
+  row, each profile row, its Ready button), and the one-human Ready button and each seat control's
+  `seatColor` are drawn with it. Home doesn't have the last two; drawing them raw beside a muted chip
+  would have been the one raw seat color on the screen.
+- **`usePickerAlign`:** places both seat buttons' menus in the one-human row (vs CPU, solo), where the
+  frame turns with the phone and hud's placement measures against the upright window. Not in 2 Player:
+  there each panel is in a split-screen zone, and `useZoneClampedAlign` keeps its menu in its own
+  player's half, which a frame-wide placement wouldn't. The placement is a hook picked by `??` inside each
+  panel, so the panels are keyed by layout (`p1-row`/`p1-zones`, `p2-...`): a change of seat 2 between a
+  person and the CPU remounts them rather than swapping a hook under a mounted one (the two layouts are
+  different trees anyway; the key makes it explicit).
+- Tests: `loadoutOptions` (11): default opaque black and white with plain buttons, transparent in the
+  foreground with half-strength options and both buttons on a surface, 2 Player's band in the
+  foreground, seat 1's labels, colors through `previewColor` on both seats, the Ready button and seat
+  controls and raw without it, the menus' placement (the panels' own by default, the pack's in the
+  one-human row for both seats, never in 2 Player) and the remount when the layout changes. Six fail on
+  0.2.1's loadout. Checked with both tarballs in PuckTastic and DuelTastic (`tsc` and their suites);
+  not seen on a device or the web here.
+
 ## Public API
 
 `src/index.ts`, the one entry (`"."`). Served as source under the `react-native` and `browser`
@@ -348,7 +384,9 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   overlay's place in both layouts, closing on a turn, the fading scrollers, a backdrop), `statsOptions`
   (`guestStats`, the pack's achievement list and tabs, `resetStats`, `statsGameTitles`, the press-away
   over the header, the frame and its cap, a backdrop, `usePickerAlign`) and `profilesRoute` (the frame,
-  `newProfileColor`, the swatch's `usePickerAlign` with the column's cap, a backdrop). `homeOptions`
+  `newProfileColor`, the swatch's `usePickerAlign` with the column's cap, a backdrop), and 0.3.0's `loadoutOptions` (the loadout's backdrop and foreground, seat 1's
+  labels, both seats' colors through `previewColor`, the seat menus' `usePickerAlign` in the one-human
+  row only, the remount on a change of layout). `homeOptions`
   also has `usePickerAlign` for seat 1's menu. `testUtils/pack.tsx`'s `standInGame` gives a `GuidelessGameDefinition` when handed
   `guide: undefined`. Each pack's own `store.test.ts` (its keys and saves) and its status bar source
   scan stay in the app.
@@ -368,8 +406,8 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   own, picked up for the bare specifiers with no `jest.mock()` call. Without them `@tastic/profile`'s
   barrel (through hud's `StaggeredWord`) and `Theme` load real Worklets, which throws under Jest.
   Copy another of the apps' mocks over the same way when a test reaches a native module.
-- **Current suite** (2026-11-03, 0.2.1): 20 suites, 151 tests, all passing (11 suites and 79 tests
-  before).
+- **Current suite** (2026-11-04, 0.3.0): 21 suites, 162 tests, all passing (20 and 151 at 0.2.1, 11
+  and 79 before 0.2.0).
 
 ## Code Style
 

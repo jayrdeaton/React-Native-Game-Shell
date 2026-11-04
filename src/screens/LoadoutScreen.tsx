@@ -1,4 +1,4 @@
-import { defaultColors, useAutoPaperTheme } from '@rific/auto-paper'
+import { defaultColors, getRgb, useAutoPaperTheme } from '@rific/auto-paper'
 import { FakeLandscapeView, getViewRotation, rotateInsets, useOrientationState } from '@tastic/core'
 import { CornerActionButtons, PressAwayOverlay, usePopoverHost } from '@tastic/hud/chrome'
 import { PlayerSetupPanel, ReadyButton, SharedActionBand } from '@tastic/hud/lobby'
@@ -122,9 +122,19 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
     router.push(playHref(game.id))
   }, [ready, humanSeats, game.id, mode, dispatch])
 
-  const bg = dark ? '#000000' : '#FFFFFF'
-  const fg = dark ? '#FFFFFF' : '#000000'
-  const fgMuted = dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
+  // Over the pack's Backdrop the loadout draws nothing of its own behind its controls, in the pack's
+  // foreground, as Home does.
+  const bg = pack.Backdrop ? 'transparent' : dark ? '#000000' : '#FFFFFF'
+  const fg = pack.foreground ?? (dark ? '#FFFFFF' : '#000000')
+  const fgMuted = (pack.foreground && halfOf(pack.foreground)) ?? (dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)')
+  // Each seat's color as the pack draws profile colors (PackDefinition.previewColor), and the seat
+  // buttons on the theme's surface over a backdrop, as Home's seat 1 button is. The saved colors stay
+  // what the Color rows pick and compare.
+  const { previewColor } = pack
+  const seatPreview = useMemo(() => (previewColor ? (hex: string) => previewColor(hex, dark) : undefined), [previewColor, dark])
+  const p1Drawn = seatPreview ? seatPreview(p1Color) : p1Color
+  const p2Drawn = seatPreview ? seatPreview(p2Color) : p2Color
+  const triggerStyle = useMemo(() => (pack.Backdrop ? [styles.pill, { backgroundColor: themeColors.surface }] : undefined), [pack.Backdrop, themeColors.surface])
 
   const isPortrait = panelLayout.orientationMode === 'faceToFace'
   // See @tastic/split-screen's needsSharedNeutralZone: whether back/settings/randomize/reset fold
@@ -138,6 +148,12 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
 
   // With one human, the one Ready button sits under both panels instead of in each.
   const showReadyButton = p2IsHuman
+  // The seat buttons' menus are placed by the pack where it places them itself (PackDefinition.
+  // usePickerAlign), as on Home, but only in the one-human row: 2 Player's halves keep each menu in
+  // its own player's half (hud's useZoneClampedAlign, the panels' own). The panels are keyed by layout,
+  // so a placement hook never changes under a mounted panel.
+  const seatPickerAlign = p2IsHuman ? undefined : pack.usePickerAlign
+  const layoutKey = p2IsHuman ? 'zones' : 'row'
   // P1's panel and the match options share one host - they sit in the same near/bottom zone. With
   // one human, seat 2's panel joins it too (one person drives both, so two open menus at once would
   // be clutter). 2 Player gives P2 their own host so two people can pick at once, each press-away
@@ -171,11 +187,11 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   )
 
   const controlLook = { accentColor: themeColors.tertiary, mutedColor: fgMuted, dark, rotation }
-  const p1Control = loadout.seatControl(1, controlsHost, { ...controlLook, seatColor: p1Color })
-  const p1Panel = <PlayerSetupPanel idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} dark={dark} showReadyButton={showReadyButton} secondPicker={p1Control} secondPickerId={p1Control ? 'p1-control' : undefined} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel='P1' onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(PROFILES_HREF)} />
-  const p2Control = p2IsHuman ? loadout.seatControl(2, p2Host, { ...controlLook, seatColor: p2Color }) : undefined
+  const p1Control = loadout.seatControl(1, controlsHost, { ...controlLook, seatColor: p1Drawn })
+  const p1Panel = <PlayerSetupPanel key={`p1-${layoutKey}`} idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} dark={dark} showReadyButton={showReadyButton} secondPicker={p1Control} secondPickerId={p1Control ? 'p1-control' : undefined} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(PROFILES_HREF)} previewValue={seatPreview} triggerStyle={triggerStyle} useSeatPickerAlign={seatPickerAlign} />
+  const p2Control = p2IsHuman ? loadout.seatControl(2, p2Host, { ...controlLook, seatColor: p2Drawn }) : undefined
   // A game for one player (no seatTwo) has no seat 2 button: seat 1's panel stands alone.
-  const p2Panel = game.seatTwo && <SeatTwoPanel idPrefix='p2' host={p2Host} choices={game.seatTwo} seatTwo={seatTwo} onSeatTwoChange={changeSeatTwo} cpuDifficulty={loadout.cpuDifficulty} profiles={profiles} selectedProfileId={lastSelected[2]} onProfileSelect={handleP2ProfileSelect} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} dark={dark} secondPicker={p2Control} secondPickerId={p2Control ? 'p2-control' : undefined} ready={ready[2]} onToggleReady={() => setReady((r) => ({ ...r, 2: !r[2] }))} showReadyButton={showReadyButton} />
+  const p2Panel = game.seatTwo && <SeatTwoPanel key={`p2-${layoutKey}`} idPrefix='p2' host={p2Host} choices={game.seatTwo} seatTwo={seatTwo} onSeatTwoChange={changeSeatTwo} cpuDifficulty={loadout.cpuDifficulty} profiles={profiles} selectedProfileId={lastSelected[2]} onProfileSelect={handleP2ProfileSelect} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} dark={dark} secondPicker={p2Control} secondPickerId={p2Control ? 'p2-control' : undefined} ready={ready[2]} onToggleReady={() => setReady((r) => ({ ...r, 2: !r[2] }))} showReadyButton={showReadyButton} previewValue={seatPreview} triggerStyle={triggerStyle} usePickerAlign={seatPickerAlign} />
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -212,7 +228,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
               {!isPortrait && panelLayout.p1OnRight ? p2Panel : p1Panel}
               {!isPortrait && panelLayout.p1OnRight ? p1Panel : p2Panel}
             </Animated.View>
-            <ReadyButton color={p1Color} ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} style={anyPlayerPickerOpen && styles.readyButtonHidden} />
+            <ReadyButton color={p1Drawn} ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} style={anyPlayerPickerOpen && styles.readyButtonHidden} />
           </View>
         )}
       </FakeLandscapeView>
@@ -220,6 +236,13 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
       <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} rotation={rotation} onShowHowToPlay={() => openFor(game.id)} />
     </View>
   )
+}
+
+// A foreground at half strength: the loadout's muted text and icons, drawn on the pack's backdrop.
+// Undefined for a color it can't read.
+function halfOf(color: string): string | undefined {
+  const rgb = getRgb(color)
+  return rgb ? `rgba(${rgb.r},${rgb.g},${rgb.b},0.5)` : undefined
 }
 
 const styles = StyleSheet.create({
@@ -246,6 +269,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0
+  },
+  // A seat button's trigger on a surface over the pack's backdrop, as Home's.
+  pill: {
+    borderRadius: 999
   },
   // The one-human row: seat 1's panel and seat 2's button read as one evenly spaced row of buttons,
   // at PlayerSetupPanel's own pickerRow gap (12).
