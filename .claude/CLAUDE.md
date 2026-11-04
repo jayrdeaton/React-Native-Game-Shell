@@ -166,7 +166,14 @@ them); nothing here has run in a browser or on a device.
    stale one); an unchanged value is never rewritten. Home reads `consumeResumeGame()` once
    (`useState`) and, for a game the pack has and that is resumable, renders a `Redirect` to its
    `play/[game]` before its menu draws. `PlayRoute` sets the id as a resumable game's play screen
-   mounts and clears it as it unmounts (any back; backgrounding leaves it mounted). The key is
+   mounts and clears it as it unmounts while the app is active (any back; backgrounding leaves it
+   mounted). An unmount with the app not active keeps it: iOS terminating an app it hasn't suspended
+   yet (swiped away from the app switcher soon after leaving it) stops every React Native surface
+   (`RCTSurfacePresenter`'s will-terminate handler), which unmounts the whole tree, and clearing then
+   sent the relaunch to Home (found on Jay's phone 2026-11-03, fixed in 0.2.1). Seen on the iOS 27
+   simulator by swiping the app away from the switcher: a Solitaire 1.2.4 build (which cleared it the
+   same way) relaunched on Home, and today's Solitaire bundle with this fix, swapped into that build,
+   went back to its Klondike deal, while tapping Home in the game still cleared it. The key is
    `lastActiveGame`, `{ gameId }`, the same key and shape as Solitaire's, and `createPackStore` mounts
    it only when a game is resumable, so PuckTastic's and DuelTastic's saves don't change.
    `ShellState` has it as optional. The saved board stays in each game's own slice.
@@ -321,7 +328,8 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   `seatlessGames` (`seatTwoFor`, `useActiveRound`'s solo fallback, a solo How to Play, the loadout
   with no seat 2 button committing a solo round, one plain CPU row), `homeScreen` (a game with no
   loadout opened straight to play and its loadout link redirected; a resume used once, kept while its
-  play screen is up and cleared on back, a second Home not resuming, a stale or non-resumable id
+  play screen is up and cleared on back, kept when it unmounts with the app not active, a second
+  Home not resuming, a stale or non-resumable id
   dropped; a preview in place of the icon a frame after Home paints, an icon kept without one, the
   wide grid and the hero's `fit`, the layout held while Home is covered; a pack without previews
   unchanged), `lastActiveGame` (Solitaire's provider tests, plus no rewrite of an unchanged value and
@@ -360,7 +368,7 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   own, picked up for the bare specifiers with no `jest.mock()` call. Without them `@tastic/profile`'s
   barrel (through hud's `StaggeredWord`) and `Theme` load real Worklets, which throws under Jest.
   Copy another of the apps' mocks over the same way when a test reaches a native module.
-- **Current suite** (2026-10-29, 0.2.0): 20 suites, 149 tests, all passing (11 suites and 79 tests
+- **Current suite** (2026-11-03, 0.2.1): 20 suites, 151 tests, all passing (11 suites and 79 tests
   before).
 
 ## Code Style

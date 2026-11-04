@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { router } from 'expo-router'
-import { View } from 'react-native'
+import { AppState, type AppStateStatus, View } from 'react-native'
 
 import { LoadoutRoute, PlayRoute } from '../screens/GameRoute'
 import { computeHomeLayout, PREVIEW_ASPECT, ROW_PREVIEW_WIDTH } from '../screens/homeLayout'
@@ -116,6 +116,13 @@ describe('a resume', () => {
   const pack = standInPack([pong, klondike], { HeroTitle: mockHero })
   const playHref = { pathname: '/play/[game]', params: { game: 'klondike' } }
 
+  // The react-native preset's AppState mock has a jest.fn for currentState (a string in React
+  // Native), and the play route reads it as it unmounts: every case starts with the app in use.
+  const presetCurrentState = AppState.currentState
+  const setCurrentState = (state: AppStateStatus) => Object.assign(AppState, { currentState: state })
+  beforeEach(() => setCurrentState('active'))
+  afterAll(() => Object.assign(AppState, { currentState: presetCurrentState }))
+
   it('is used once, then cleared when the player backs out of the game', async () => {
     const store = standInStore(pack, 'klondike')
     const wrapper = shellWrapper(pack, store)
@@ -137,6 +144,20 @@ describe('a resume', () => {
     expect(store.getState().lastActiveGame.gameId).toBeNull()
     expect(screen.queryByTestId('redirect')).toBeNull()
     expect(mockHero).toHaveBeenCalled()
+  })
+
+  // iOS terminating an app it hasn't suspended yet (swiped away from the app switcher) unmounts the
+  // whole tree with the app no longer active: the next launch must still resume the game.
+  it.each(['background', 'inactive'] as const)('is kept when the play screen unmounts with the app %s', async (state) => {
+    const store = standInStore(pack)
+    mockParams = { game: 'klondike' }
+    await render(<PlayRoute />, { wrapper: shellWrapper(pack, store) })
+    expect(store.getState().lastActiveGame.gameId).toBe('klondike')
+
+    setCurrentState(state)
+    await screen.unmount()
+
+    expect(store.getState().lastActiveGame.gameId).toBe('klondike')
   })
 
   it('is not used again by a second Home', async () => {

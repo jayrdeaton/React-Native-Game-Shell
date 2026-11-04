@@ -1,5 +1,6 @@
 import { Redirect, useLocalSearchParams } from 'expo-router'
 import { useEffect } from 'react'
+import { AppState } from 'react-native'
 
 import { useLastActiveGame } from '../hooks/useLastActiveGame'
 import { usePackGame } from '../PackContext'
@@ -36,14 +37,20 @@ export function PlayRoute() {
 }
 
 // A resumable game's play screen (GameDefinition.resumable) is where a cold launch comes back to:
-// remembered as it mounts, and forgotten when it unmounts, which is the player backing out of it
-// (its own back, hardware back or a browser back). Backgrounding the app leaves the screen mounted,
-// so it stays remembered. Runs once per play screen: the context's functions never change.
+// remembered as it mounts, and forgotten when the player backs out of it (its own back, hardware back
+// or a browser back), which unmounts it while the app is in use. Backgrounding the app leaves the
+// screen mounted, so it stays remembered. An unmount with the app NOT active keeps it too: when iOS
+// terminates an app it hasn't suspended yet (swiped away from the app switcher soon after leaving
+// it), React Native's renderer stops every surface (RCTSurfacePresenter's will-terminate handler),
+// which unmounts the whole tree, and clearing then sent every such relaunch to Home. Runs once per
+// play screen: the context's functions never change.
 function useResumePoint(gameId: string | null) {
   const { setLastActiveGame, clearLastActiveGame } = useLastActiveGame()
   useEffect(() => {
     if (!gameId) return
     setLastActiveGame(gameId)
-    return clearLastActiveGame
+    return () => {
+      if (AppState.currentState === 'active') clearLastActiveGame()
+    }
   }, [gameId, setLastActiveGame, clearLastActiveGame])
 }
