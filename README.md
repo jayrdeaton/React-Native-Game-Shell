@@ -22,7 +22,7 @@ package ecosystem, on [`@tastic/hud`](https://github.com/jayrdeaton/react-native
   own theme, not the phone's light or dark appearance: the status bar's text, the root window and the
   navigation theme's background (what shows in a sliding screen's corners during a push or pop).
 - **Screens** for the routes: `HomeScreen` (the pack's hero, seat 1's button, a row per game, or a
-  grid of preview tiles on a wide screen), `LoadoutRoute` and `PlayRoute` (`loadout/[game]`,
+  grid of preview tiles on a wide screen, split into tabs where the pack has them), `LoadoutRoute` and `PlayRoute` (`loadout/[game]`,
   `play/[game]`), `ProfilesRoute` and `StatsScreen`.
 - **The store**: `createPackStore(pack, { keyPrefix, migrate, blacklist, serializableIgnoredPaths,
   middleware })` builds one persisted store from the shell's keys (theme, haptics, sound, Keep Awake,
@@ -130,6 +130,7 @@ PuckTastic and DuelTastic draw what they always did:
 | `statsGameTitles?` | `false` leaves each game's name off its sections on All Games, where the sections name it. |
 | `newProfileColor?` | A new profile's starting color on Profiles. Unset is auto-paper's first swatch. |
 | `usePickerAlign?` | `(open, contentWidth, contentHeight, options?) => AlignResult` (`PickerAlign`), a hook: where seat 1's menu on Home, both seat buttons' menus in a loadout's one-human row (2 Player keeps each menu in its own player's half), the stats screen's two pickers and a profile's color swatch open. hud's own placement measures a turned button against the upright window, so with the phone held sideways it can run a menu off the screen (seen on the iOS simulator, 2026-10-29); a pack whose screens turn hands in a frame-aware one (Solitaire's `useFrameAutoAlign`). Profiles passes `{ maxContentWidth: 640 }`, its roster's column. Unset is hud's placement. |
+| `homeTabs?` | Tabs splitting Home's games (`HomeTab`: a `label`, and `includes(game)`, which of the pack's games it shows, in the pack's order): a switch under seat 1's button, or over the grid on a wide screen, on the theme's surface over a `Backdrop`, showing one tab's games at a time. It opens on the first tab and keeps the one picked while Home is covered or turns. The other tabs' games stay mounted, hidden, so a switch draws nothing new. A game no tab includes isn't on Home. Unset, or a single tab, shows every game with no switch. Solitaire's: Solitaire (no `seatTwo`) and Two Player. |
 
 ### `GameDefinition`
 

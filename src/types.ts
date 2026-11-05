@@ -225,6 +225,13 @@ export interface PackStatsSectionsProps {
   gameId: string | null
 }
 
+// A tab on Home (PackDefinition.homeTabs): its label, and which of the pack's games it shows, in the
+// pack's order (Solitaire's: the games with no seat 2, and the ones with one).
+export interface HomeTab {
+  label: string
+  includes: (game: PackGameDefinition) => boolean
+}
+
 // The stack's screen options (expo-router's Stack), as an object: what PackDefinition.useScreenOptions
 // returns.
 export type StackScreenOptions = Exclude<NonNullable<ComponentProps<typeof Stack>['screenOptions']>, (...args: never[]) => unknown>
@@ -260,6 +267,10 @@ export interface PackDefinition {
   // A seat's color pick for a profile is kept for this pack only; the seat button says so.
   colorCaption: string
   games: readonly PackGameDefinition[]
+  // Home splits the games into these tabs, a switch under seat 1's button (over the grid on a wide
+  // screen) showing one tab's games at a time. It opens on the first, and keeps the tab picked while Home
+  // is covered. Unset, or a single tab, shows every game with no switch.
+  homeTabs?: readonly HomeTab[]
   // Player 1's and player 2's own default colors. They seed the theme's primary and secondary (the
   // tertiary is derived from them, see shellState.ts) and the guest and CPU colors a fresh install
   // starts with (seatColorsSlice.ts), so a fresh install's live theme and its remembered colors agree.

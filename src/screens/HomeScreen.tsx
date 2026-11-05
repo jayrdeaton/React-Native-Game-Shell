@@ -4,9 +4,9 @@ import { FakeLandscapeView, useRotation } from '@tastic/core'
 import { PressAwayOverlay, usePopoverHost, useWellColors, WELL_SHADOW } from '@tastic/hud/chrome'
 import { getProfilePickerContentSize, type Profile, ProfilePicker, type ProfilePickerColorSection } from '@tastic/profile'
 import { Redirect, router, useIsFocused } from 'expo-router'
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
-import { AppState, type AppStateStatus, StyleSheet, View } from 'react-native'
-import { Icon, Portal, Text } from 'react-native-paper'
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AppState, type AppStateStatus, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollView, StyleSheet, View } from 'react-native'
+import { Icon, Portal, SegmentedButtons, Text } from 'react-native-paper'
 
 import { useGameGuide } from '../components/GuideHost'
 import { SettingsDialog } from '../components/SettingsDialog'
@@ -17,14 +17,15 @@ import { useProfiles } from '../hooks/useProfiles'
 import { useSeatColors } from '../hooks/useSeatColors'
 import { usePack } from '../PackContext'
 import { loadoutHref, playHref, PROFILES_HREF, STATS_HREF } from '../routes'
-import type { PackGameDefinition } from '../types'
+import type { HomeTab, PackGameDefinition } from '../types'
 import { HOME_GRID_GAP, HOME_LEFT_PANE_PICKER_GAP, HOME_TILE_PADDING, HOME_TOP_BAND, HOME_WIDE_PANE_GAP, PREVIEW_ASPECT, ROW_PREVIEW_WIDTH, useHomeLayout } from './homeLayout'
 
 // Home: who's playing (seat 1, the same seat 1 every loadout starts with), then every game in the
 // pack as a row in a fixed order, Solitaire's list: each game on its own well, its small app icon
 // (or its preview, GameDefinition.Preview) beside its name and blurb. A tap opens that game's
 // loadout, or its play screen in a game without one, after its How to Play cards the first time it's
-// picked. Seat 2 is chosen in the loadout, from seat 2's own button.
+// picked. Seat 2 is chosen in the loadout, from seat 2's own button. A pack with tabs
+// (PackDefinition.homeTabs) shows one tab's games at a time, from a switch over the rows.
 //
 // A cold launch that finds the player left the app inside a resumable game's play screen
 // (GameDefinition.resumable) goes straight back there instead, before the menu ever paints. The
@@ -111,6 +112,18 @@ function HomeMenu() {
   const p1Drawn = previewColor ? previewColor(p1Color, dark) : p1Color
   const triggerStyle = useMemo(() => (pack.Backdrop ? [styles.pill, { backgroundColor: colors.surface }] : undefined), [pack.Backdrop, colors.surface])
 
+  // The pack's tabs (PackDefinition.homeTabs): one tab's games at a time, the same switch as the stats
+  // screen's tabs (on the theme's surface over a backdrop). The other tabs' games stay mounted, hidden, so
+  // a switch draws nothing new (their previews are already there). The tab is Home's own state, kept while
+  // Home is covered, since Home stays mounted under every screen it opens.
+  const tabs = pack.homeTabs && pack.homeTabs.length > 1 ? pack.homeTabs : null
+  const [tabLabel, setTabLabel] = useState(() => tabs?.[0].label ?? null)
+  const tab = tabs ? (tabs.find((t) => t.label === tabLabel) ?? tabs[0]) : null
+  const tabButtons = useMemo(() => tabs?.map(({ label }) => ({ value: label, label })) ?? [], [tabs])
+  const tabBar = tab && <SegmentedButtons value={tab.label} onValueChange={setTabLabel} buttons={tabButtons} style={[styles.tabs, pack.Backdrop && { backgroundColor: colors.surface }]} />
+  const columnClamp = useClampOnShrink()
+  const gridClamp = useClampOnShrink()
+
   // A game with nothing to set up (no useLoadout) opens straight to its play screen.
   const openGame = useCallback((game: PackGameDefinition) => openFirstTime(game.id, () => router.push(game.useLoadout ? loadoutHref(game.id) : playHref(game.id))), [openFirstTime])
 
@@ -149,10 +162,11 @@ function HomeMenu() {
             to the frame's right edge and the cog's gutter is its content's padding, so a web scrollbar
             sits at the window's edge. Both scrollers fade out at an edge while there is more past it
             (auto-paper's FadingScrollView, a mask, so whatever is behind shows through). */}
-              <FadingScrollView style={[styles.wideRightPane, { left: layout.paddingLeft + layout.leftPaneWidth + HOME_WIDE_PANE_GAP }]} contentContainerStyle={{ paddingTop: 16 + insets.top, paddingBottom: 16 + insets.bottom, paddingRight: layout.paddingRight }}>
+              <FadingScrollView {...(tab && gridClamp)} style={[styles.wideRightPane, { left: layout.paddingLeft + layout.leftPaneWidth + HOME_WIDE_PANE_GAP }]} contentContainerStyle={{ paddingTop: 16 + insets.top, paddingBottom: 16 + insets.bottom, paddingRight: layout.paddingRight }}>
+                {tabBar && <View style={[styles.wideTabs, { width: layout.rightPaneWidth }]}>{tabBar}</View>}
                 <View style={[styles.grid, { width: layout.rightPaneWidth }]}>
                   {pack.games.map((game) => (
-                    <GameTile key={game.id} game={game} width={layout.tileWidth} previewWidth={layout.previewWidth} previewRevealed={previewsRevealed} dark={dark} p1Color={p1Color} p2Color={p2Color} onPress={() => openGame(game)} onRules={hasRules(game) ? () => openRules(game) : undefined} />
+                    <GameTile key={game.id} game={game} hidden={isHidden(tab, game)} width={layout.tileWidth} previewWidth={layout.previewWidth} previewRevealed={previewsRevealed} dark={dark} p1Color={p1Color} p2Color={p2Color} onPress={() => openGame(game)} onRules={hasRules(game) ? () => openRules(game) : undefined} />
                   ))}
                 </View>
               </FadingScrollView>
@@ -165,7 +179,7 @@ function HomeMenu() {
               </View>
             </>
           ) : (
-            <FadingScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingTop: 56 + insets.top, paddingBottom: 24 + insets.bottom, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}>
+            <FadingScrollView {...(tab && columnClamp)} style={styles.scroll} contentContainerStyle={[styles.content, { paddingTop: 56 + insets.top, paddingBottom: 24 + insets.bottom, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}>
               {pressAway}
               <pack.HeroTitle words={pack.wordmark} color={fg} p1Color={p1Color} p2Color={p2Color} active={heroActive} />
 
@@ -173,9 +187,11 @@ function HomeMenu() {
             tiles while its menu is open, so the menu paints over them. */}
               <View style={[styles.picker, pickerHost.openId !== null && styles.pickerOpen]}>{picker}</View>
 
+              {tabBar && <View style={styles.listWidth}>{tabBar}</View>}
+
               <View style={styles.list}>
                 {pack.games.map((game) => (
-                  <GameRow key={game.id} game={game} dark={dark} p1Color={p1Color} p2Color={p2Color} previewRevealed={previewsRevealed} onPress={() => openGame(game)} onRules={hasRules(game) ? () => openRules(game) : undefined} />
+                  <GameRow key={game.id} game={game} hidden={isHidden(tab, game)} dark={dark} p1Color={p1Color} p2Color={p2Color} previewRevealed={previewsRevealed} onPress={() => openGame(game)} onRules={hasRules(game) ? () => openRules(game) : undefined} />
                 ))}
               </View>
             </FadingScrollView>
@@ -200,6 +216,43 @@ const SEAT_ONE_PICKER = 'home-p1'
 // No placement of the pack's own: hud places the menu itself.
 const noPickerAlign = () => undefined
 
+// A game the tab picked doesn't include: kept mounted, out of the layout and out of a screen reader's way.
+function isHidden(tab: HomeTab | null, game: PackGameDefinition): boolean {
+  return !!tab && !tab.includes(game)
+}
+
+// iOS leaves a scroller's offset past the end when its content shrinks (React Native's own TODO, T190695447
+// in RCTScrollViewComponentView.mm), so a switch to a shorter tab while scrolled down would leave blank space
+// under the last game until the next drag. This pulls it back in, as Android and the web do by themselves.
+// Spread onto one scroller (its ref and three events) only in a pack with tabs, the one way Home's content
+// shrinks. The ref is a callback so a scroller mounted afresh (a switch between the column and the grid)
+// starts from its real offset, 0, not the last one's.
+function useClampOnShrink() {
+  const view = useRef<ScrollView | null>(null)
+  const sizes = useRef({ viewport: 0, offset: 0 })
+  return useMemo(
+    () => ({
+      ref: (instance: ScrollView | null) => {
+        view.current = instance
+        sizes.current.offset = 0
+      },
+      onLayout: (e: LayoutChangeEvent) => {
+        sizes.current.viewport = e.nativeEvent.layout.height
+      },
+      onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        sizes.current.offset = e.nativeEvent.contentOffset.y
+      },
+      onContentSizeChange: (_width: number, height: number) => {
+        const end = Math.max(0, height - sizes.current.viewport)
+        if (sizes.current.offset <= end) return
+        sizes.current.offset = end
+        view.current?.scrollTo({ y: end, animated: false })
+      }
+    }),
+    []
+  )
+}
+
 // Whether a tile has a rules button: a rules sheet or How to Play cards to show.
 function hasRules(game: PackGameDefinition): boolean {
   return !!(game.Rules || game.guide)
@@ -214,6 +267,8 @@ function RulesHost({ enabled, children }: { enabled: boolean; children: ReactNod
 
 interface GameRowProps {
   game: PackGameDefinition
+  // Not in the tab picked (PackDefinition.homeTabs).
+  hidden: boolean
   dark: boolean
   p1Color: string
   p2Color: string
@@ -227,13 +282,13 @@ interface GameRowProps {
 // One game on its own well: its icon at app-icon size (the art was drawn as an app icon), or its
 // preview where it has one, its name and one-line blurb, and a rules button at the end that shows its
 // How to Play cards without opening the game.
-function GameRow({ game, dark, p1Color, p2Color, previewRevealed, onPress, onRules }: GameRowProps) {
+function GameRow({ game, hidden, dark, p1Color, p2Color, previewRevealed, onPress, onRules }: GameRowProps) {
   const well = useWellColors()
   const GameIcon = game.icon
   return (
     // The rules button sits beside the row's own button, laid over its end, not inside it: a button
     // inside a button is invalid on the web.
-    <View>
+    <View style={hidden ? styles.hidden : undefined}>
       <Pressable onPress={onPress} style={[styles.row, { backgroundColor: well.bg }]} accessibilityRole='button' accessibilityLabel={game.title}>
         {game.Preview ? <PreviewBox game={game} width={ROW_PREVIEW_WIDTH} revealed={previewRevealed} dark={dark} p1Color={p1Color} p2Color={p2Color} /> : <View style={[styles.rowIcon, { backgroundColor: dark ? ICON_DARK_BG : ICON_LIGHT_BG }]}>{GameIcon && <GameIcon size={ROW_ICON_SIZE} p1Color={p1Color} p2Color={p2Color} dark={dark} />}</View>}
         <View style={styles.rowText}>
@@ -262,10 +317,10 @@ interface GameTileProps extends GameRowProps {
 // One game in the wide layout's grid: the row turned on its side, its preview (or icon) on top and its
 // name and blurb under it, since a row needs ~290pt, more than a grid column beside the hero has. The
 // rules button floats over the preview's corner, beside the tile's button rather than inside it.
-function GameTile({ game, width, previewWidth, dark, p1Color, p2Color, previewRevealed, onPress, onRules }: GameTileProps) {
+function GameTile({ game, hidden, width, previewWidth, dark, p1Color, p2Color, previewRevealed, onPress, onRules }: GameTileProps) {
   const well = useWellColors()
   return (
-    <View style={{ width }}>
+    <View style={[{ width }, hidden && styles.hidden]}>
       <Pressable onPress={onPress} style={[styles.tile, { backgroundColor: well.bg }]} accessibilityRole='button' accessibilityLabel={game.title}>
         <PreviewBox game={game} width={previewWidth} revealed={previewRevealed} dark={dark} p1Color={p1Color} p2Color={p2Color} />
         <Text variant='titleMedium' style={[styles.rowTitle, { color: well.fg }]} numberOfLines={1}>
@@ -337,9 +392,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: HOME_GRID_GAP
   },
+  // Out of the layout (a grid closes up around it) and hidden from screen readers.
+  hidden: {
+    display: 'none'
+  },
   // Solitaire's list: one column, never wider than a phone's, centred on a wide screen.
   list: {
     gap: 14,
+    maxWidth: 480,
+    width: '100%'
+  },
+  // The list's width, for the tabs over it.
+  listWidth: {
     maxWidth: 480,
     width: '100%'
   },
@@ -405,6 +469,10 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1
   },
+  // SegmentedButtons' own rounding, so a surface behind it is the same pill (the stats screen's tabs).
+  tabs: {
+    borderRadius: 20
+  },
   // The same well as a row, turned on its side.
   tile: {
     borderRadius: 12,
@@ -443,5 +511,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0
+  },
+  // The tabs over the grid, a little further from it than the tiles are from each other.
+  wideTabs: {
+    marginBottom: 16
   }
 })

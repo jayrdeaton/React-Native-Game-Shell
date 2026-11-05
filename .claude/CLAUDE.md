@@ -346,6 +346,41 @@ and the app in its dark theme (DuelTastic's `appearance: 'dark'`):
   of the same push and pop recorded with `simctl io recordVideo` are black there. Not checked: a
   device, Android, the light theme, a pack with a `Backdrop`.
 
+## Home's tabs (0.4.0, 2026-11-04)
+
+Solitaire (becoming CardTastic) has fifteen games: eleven solitaire games and four for two players, and
+Jay asked for Home to split them by type. He picked tabs, Solitaire | Two Player, over section headings
+or a filter pill, and no player count on each tile (each tab already says who plays). `homeTabs` is
+optional, so a pack without it (PuckTastic, DuelTastic) draws the same Home.
+
+- **The shape.** `HomeTab` is a `label` and `includes(game)`, a predicate over the pack's own games, in
+  the pack's order. Solitaire's read `seatTwo` (none for one player), so the tabs follow the games'
+  definitions with no id list kept beside `games`. A game no tab includes isn't on Home; fewer than two
+  tabs is no switch at all.
+- **The switch** is the stats screen's: Paper's `SegmentedButtons`, labels only, `borderRadius` 20 and
+  on the theme's surface over a `Backdrop`. Upright it sits between seat 1's button and the rows, as wide
+  as the list (480pt at most); wide, at the top of the grid's scroller, as wide as the grid, 16pt above
+  the tiles. Both scroll with the games.
+- **Hidden, not unmounted.** A game outside the tab is `display: 'none'` (its row in the column, its
+  tile in the grid, which closes up around it), so a switch draws nothing new: every preview is already
+  there, as on a Home without tabs, and none is drawn again in the commit a tap lands on. It also keeps
+  each row's tree in place. A screen reader skips the hidden ones.
+- **The tab** is Home's own state, the first on a cold launch. Home stays mounted under every screen it
+  opens, and the column and grid are one `HomeMenu`, so it's kept while Home is covered and across turns.
+  Not persisted: no new store key, so no pack's saved shape changes.
+- **A switch to a shorter tab while scrolled down** (`useClampOnShrink`): React Native's iOS scroller
+  leaves its offset past the end when its content shrinks (its own TODO, T190695447 in
+  `RCTScrollViewComponentView.mm`; Solitaire saw the same with a long column losing cards), which would
+  leave blank space under the last game until the next drag. Each scroller gets a ref and its layout,
+  scroll and content-size events, and scrolls back to the new end on a shrink, as Android and the web do
+  by themselves. Only in a pack with tabs. The ref is a callback that resets the offset to 0, so the grid
+  or column mounted afresh by a turn never acts on the other's last offset.
+- Tests: `homeTabs` (10): no switch and every game without tabs or with one, the first tab's games in
+  order, a press showing another's, the surface over a backdrop, the grid's tabs on a wide screen, the tab
+  kept while covered and across a turn, and the clamp (scrolled past the shorter end, within it, and never
+  without tabs). Three fail with the hiding or the clamp taken out. Not seen on a device: the iOS clamp is
+  from reading React Native's source and Solitaire's notes, unverified.
+
 ## Public API
 
 `src/index.ts`, the one entry (`"."`). Served as source under the `react-native` and `browser`
@@ -359,7 +394,7 @@ default-exported reducers are exported by name (`appSettingsReducer`, `liveplayR
 `PackStatsSectionsProps` and `PREVIEW_ASPECT` (the shape a game's `Preview` draws in). 0.2.0 added
 `GUEST_PLAYER_ID` and the types `GuidelessGameDefinition`, `PackGameDefinition`, `PackGuide`,
 `GameRulesProps`, `StackScreenOptions`, `FeedbackSounds`, `PackStatsTab`, `PackStatsReset` and
-`PickerAlign`.
+`PickerAlign`. 0.4.0 added the type `HomeTab` (Home's tabs).
 
 ## Peer Dependencies
 
@@ -420,7 +455,9 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   over the header, the frame and its cap, a backdrop, `usePickerAlign`) and `profilesRoute` (the frame,
   `newProfileColor`, the swatch's `usePickerAlign` with the column's cap, a backdrop), and 0.3.0's `loadoutOptions` (the loadout's backdrop and foreground, seat 1's
   labels, both seats' colors through `previewColor`, the seat menus' `usePickerAlign` in the one-human
-  row only, the remount on a change of layout). `homeOptions`
+  row only, the remount on a change of layout), and `homeTabs` (Home's tabs: see "Home's tabs"; it
+  keeps auto-paper's real `FadingScrollView`, over React Native's mocked `ScrollView`, whose `scrollTo`
+  is one `jest.fn` on the prototype every instance shares). `homeOptions`
   also has `usePickerAlign` for seat 1's menu. `testUtils/pack.tsx`'s `standInGame` gives a `GuidelessGameDefinition` when handed
   `guide: undefined`. Each pack's own `store.test.ts` (its keys and saves) and its status bar source
   scan stay in the app.
@@ -440,8 +477,8 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   own, picked up for the bare specifiers with no `jest.mock()` call. Without them `@tastic/profile`'s
   barrel (through hud's `StaggeredWord`) and `Theme` load real Worklets, which throws under Jest.
   Copy another of the apps' mocks over the same way when a test reaches a native module.
-- **Current suite** (2026-11-05, 0.3.1): 21 suites, 165 tests, all passing (162 at 0.3.0, 20 and 151
-  at 0.2.1, 11 and 79 before 0.2.0).
+- **Current suite** (2026-11-05, 0.4.0): 22 suites, 175 tests, all passing (21 and
+  165 at 0.3.1, 162 at 0.3.0, 20 and 151 at 0.2.1, 11 and 79 before 0.2.0).
 
 ## Code Style
 
