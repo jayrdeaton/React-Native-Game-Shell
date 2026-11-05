@@ -18,7 +18,9 @@ package ecosystem, on [`@tastic/hud`](https://github.com/jayrdeaton/react-native
 
 - **`RootLayout`**: the root of the app (gesture root, safe area, fonts, Redux and its persist gate,
   the theme, profiles, every game's own provider, the splash gates, the shared orientation reading,
-  toasts, How to Play, the OTA update dialog) around expo-router's stack.
+  toasts, How to Play, the OTA update dialog) around expo-router's stack. The stack follows the app's
+  own theme, not the phone's light or dark appearance: the status bar's text, the root window and the
+  navigation theme's background (what shows in a sliding screen's corners during a push or pop).
 - **Screens** for the routes: `HomeScreen` (the pack's hero, seat 1's button, a row per game, or a
   grid of preview tiles on a wide screen), `LoadoutRoute` and `PlayRoute` (`loadout/[game]`,
   `play/[game]`), `ProfilesRoute` and `StatsScreen`.
@@ -112,7 +114,7 @@ PuckTastic and DuelTastic draw what they always did:
 | `Backdrop?` | A table drawn once behind the whole stack (Solitaire's felt). The stack's two layers go transparent (the screens' `contentStyle` and the navigation theme's `colors.background`, which React Navigation paints around every screen), the root window stays dark so light mode doesn't flash white on a push, Android's push and pop crossfade (its default holds the outgoing screen opaque), and Home, each loadout, the stats screen and Profiles draw transparent, with their buttons and tabs on the theme's surface. |
 | `foreground?` | The color of what those screens draw straight on the background (the hero, the corner buttons, headers), and at half strength a loadout's muted options. Unset is black or white with the theme. |
 | `Provider?` | Mounted once around How to Play and the stack, inside the store, the theme, profiles and every game's `Provider` (one stats context across the pack's games). |
-| `useScreenOptions?` | A hook returning stack screen options (`StackScreenOptions`), merged after the shell's own (a light status bar, Reduce Motion's crossfade). |
+| `useScreenOptions?` | A hook returning stack screen options (`StackScreenOptions`), merged after the shell's own (a status bar style of the pack's own, Reduce Motion's crossfade). The shell's already follow the app's theme, and stay dark over a `Backdrop`. |
 | `useFeedbackSounds?` | A hook returning the two sounds every button plays (`FeedbackSounds`: `selection`, `notification`), in place of the shell's two wavs. |
 | `Toaster?` | The pack's own toaster, drawn in a frame turned with the phone (with the safe-area insets turned onto its edges) in place of the shell's. The toast provider is given no Paper, so nothing portals it out of the frame. |
 | `portraitWhileKeyboard?` | Every screen reads upright while the software keyboard is up (`@tastic/core`'s `OrientationProvider`), for naming a profile sideways. |

@@ -5,7 +5,7 @@ import { OrientationProvider, useRotationAwareStatusBar, useThemedRootBackground
 import { RotatedFrame } from '@tastic/hud/chrome'
 import { ProfileColorProvider } from '@tastic/profile'
 import * as Haptics from 'expo-haptics'
-import { DarkTheme, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router'
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router'
 import { DeviceMotion } from 'expo-sensors'
 import { ReactNode, useCallback, useMemo } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
@@ -50,13 +50,16 @@ import type { PackDefinition, PackGameDefinition } from './types'
 const PLAY_OPTIONS = { statusBarHidden: true }
 const KEEP_STATUS_BAR_OPTIONS = {}
 
-// A pack's Backdrop (PackDefinition.Backdrop) is drawn once behind the whole stack and has to show
-// through two layers: each screen's contentStyle, and the layers React Navigation paints its theme's
-// `colors.background` on around every screen (the ScreenStack's container on native, each screen's
-// wrapper on the web). contentStyle alone left an opaque light grey slab over Solitaire's felt on the
-// web. Nothing else reads the navigation theme (headers are hidden; Paper has its own). Built only for
-// a pack with a backdrop, as it renders: never at import, where a pack's tests may stand in for
-// expo-router without a DarkTheme.
+// The navigation theme is the root background too. React Navigation paints its theme's
+// `colors.background` on the layers around every screen (the ScreenStack's container on native, each
+// screen's wrapper on the web), and expo-router hands its container no theme, so that was always
+// DefaultTheme's light grey: on iOS it showed in a sliding screen's rounded corners during every push and
+// pop, whatever the app's theme. So the stack always gets a theme whose background is the root
+// background's own color, and a pack's Backdrop (PackDefinition.Backdrop), drawn once behind the whole
+// stack, gets a transparent one so it shows through both layers (contentStyle alone left an opaque light
+// grey slab over Solitaire's felt on the web). Nothing else reads the navigation theme (headers are
+// hidden; Paper has its own). Built as the stack renders, never at import, where a pack's tests may stand
+// in for expo-router without its themes.
 const TRANSPARENT_CONTENT = { backgroundColor: 'transparent' }
 
 // The pack's own screen options (PackDefinition.useScreenOptions), as a hook every pack calls: an
@@ -67,10 +70,13 @@ function AppStack() {
   const pack = usePack()
   const { Backdrop } = pack
   const { dark } = useAutoPaperTheme()
-  // Over a backdrop the root window stays dark whatever the mode: a backdrop is a dark table (the
-  // felt), and a light root window would flash white around it during a push or pop.
-  const rootBackground = useThemedRootBackground(Backdrop ? true : dark, false)
-  const statusBar = useRotationAwareStatusBar()
+  // Over a backdrop the root stays dark whatever the mode: a backdrop is a dark table (the felt), and a
+  // light root window would flash white around it during a push or pop.
+  const darkRoot = Backdrop ? true : dark
+  const rootBackground = useThemedRootBackground(darkRoot, false)
+  // The status bar's text follows the app's theme, not the phone's appearance (react-native-screens'
+  // default `auto`), which drew dark text on a dark theme's black Home with the phone set to light.
+  const statusBar = useRotationAwareStatusBar({ style: darkRoot ? 'light' : 'dark' })
   const packOptions = (pack.useScreenOptions ?? noScreenOptions)()
   // Over a backdrop every screen is transparent, and Android crossfades: its default push and pop hold
   // the outgoing screen opaque for ~450ms while the new one slides over it, which would show Home
@@ -83,18 +89,24 @@ function AppStack() {
     },
     [pack.games]
   )
-  const navigationTheme = useMemo(() => (Backdrop ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: 'transparent' } } : null), [Backdrop])
+  const navigationBackground = Backdrop ? TRANSPARENT_CONTENT.backgroundColor : rootBackground.contentStyle.backgroundColor
+  const navigationTheme = useMemo(() => {
+    const base = darkRoot ? DarkTheme : DefaultTheme
+    return { ...base, colors: { ...base.colors, background: navigationBackground } }
+  }, [darkRoot, navigationBackground])
   const stack = (
-    <Stack screenOptions={{ ...rootBackground, ...statusBar, ...backdropOptions, ...packOptions }}>
-      <Stack.Screen name='index' />
-      <Stack.Screen name='play/[game]' options={playOptions} />
-    </Stack>
+    <NavigationThemeProvider value={navigationTheme}>
+      <Stack screenOptions={{ ...rootBackground, ...statusBar, ...backdropOptions, ...packOptions }}>
+        <Stack.Screen name='index' />
+        <Stack.Screen name='play/[game]' options={playOptions} />
+      </Stack>
+    </NavigationThemeProvider>
   )
-  if (!Backdrop || !navigationTheme) return stack
+  if (!Backdrop) return stack
   return (
     <View style={styles.root}>
       <Backdrop />
-      <NavigationThemeProvider value={navigationTheme}>{stack}</NavigationThemeProvider>
+      {stack}
     </View>
   )
 }

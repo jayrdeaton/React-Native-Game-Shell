@@ -314,6 +314,38 @@ against hud's packed tarball, then released on hud 0.27.1 from npm (the peer flo
   0.2.1's loadout. Checked with both tarballs in PuckTastic and DuelTastic (`tsc` and their suites);
   not seen on a device or the web here.
 
+## The stack follows the app's theme (0.3.1, 2026-11-04)
+
+Found in DuelTastic's iOS Simulator Release build (its `TODO.md`, item 7), with the phone set to light
+and the app in its dark theme (DuelTastic's `appearance: 'dark'`):
+
+- **The status bar was invisible on Home.** `AppStack` passed `useRotationAwareStatusBar()` no style,
+  so react-native-screens' default `auto` followed the phone's appearance: dark text on the black Home.
+  It now asks for `'light'` on a dark root and `'dark'` on a light one (the same `darkRoot` the root
+  background reads, so dark over a `Backdrop` in every mode). A pack's `useScreenOptions` still wins:
+  Solitaire's own `style: 'light'` is now the shell's default for it, and harmless.
+- **Light grey in the corners on every push and pop.** Not the phone's appearance at all: expo-router
+  hands its `NavigationContainer` no theme, so React Navigation used `DefaultTheme`, and native-stack
+  paints the `ScreenStack`'s native container `colors.background`, `rgb(242, 242, 242)`, which shows in
+  a sliding screen's rounded corners. `useThemedRootBackground` only set the screens' `contentStyle` and
+  the OS root window, both already on the app's theme. `AppStack` now always wraps the stack in a
+  navigation theme (`DarkTheme` or `DefaultTheme` by `darkRoot`) whose background is the root
+  background's own `contentStyle` color, so the two can't drift; over a `Backdrop` it's transparent, as
+  before. Still built as the stack renders, never at import (see "What CardTastic needs", item 3).
+- **Any app on `useThemedRootBackground` without the shell** has the same corners unless it provides a
+  navigation theme of its own: core's hook doesn't (it depends on no navigation library).
+- Tests: `packRoot`'s "the root follows the app's theme" (light, dark, the pack's style winning) and
+  its backdrop case (a light status bar and the dark-based transparent theme in light mode).
+- **Checked in the iOS Simulator** (2026-11-05, DuelTastic, iPhone 18 Pro, iOS 27, the phone in light
+  mode, the app's Sound off): the Release binary from 2026-11-04 with its `main.jsbundle` swapped for a
+  production bundle (`expo export:embed --dev false`, then hermesc `-O`, as Xcode's bundle phase does)
+  built against a packed tarball of this change. A full Release rebuild didn't fit on the disk, and
+  neither the shell nor hud ships native code. Before the swap, the status bar on the dark Home was
+  invisible and a push to a loadout and back showed a light grey band between the sliding screens and
+  in their rounded corners. After it, the status bar is light text on Home and the loadout, and frames
+  of the same push and pop recorded with `simctl io recordVideo` are black there. Not checked: a
+  device, Android, the light theme, a pack with a `Backdrop`.
+
 ## Public API
 
 `src/index.ts`, the one entry (`"."`). Served as source under the `react-native` and `browser`
@@ -376,7 +408,9 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   expo-router stood in by its `router` alone), `createPackStore`'s new cases (`seatTheme` seeding the
   theme, `blacklist`, `serializableIgnoredPaths`, `middleware`), `packRoot` (the real `RootLayout`
   with recording stand-ins: `Backdrop`, `useScreenOptions`, `keepStatusBar`, the pack's and a game's
-  `Provider`, `Toaster` with no Paper, `portraitWhileKeyboard`, `previewColor`; Settings' `edgeGuard`),
+  `Provider`, `Toaster` with no Paper, `portraitWhileKeyboard`, `previewColor`; Settings' `edgeGuard`;
+  since 0.3.1 the root following the app's theme, light and dark: the status bar's style, the root
+  background and the navigation theme's background, and the pack's style winning over the shell's),
   `feedbackSounds` (the real `Providers`: the shell's two wavs or the pack's), `seatTheme`
   (`useSeatColors` with and without one), `packGuide` (the real `GuideHost`: shown once per session while
   unseen, marked seen on close, `openPack`, games without cards and with them), `homeOptions` (rules
@@ -406,8 +440,8 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   own, picked up for the bare specifiers with no `jest.mock()` call. Without them `@tastic/profile`'s
   barrel (through hud's `StaggeredWord`) and `Theme` load real Worklets, which throws under Jest.
   Copy another of the apps' mocks over the same way when a test reaches a native module.
-- **Current suite** (2026-11-04, 0.3.0): 21 suites, 162 tests, all passing (20 and 151 at 0.2.1, 11
-  and 79 before 0.2.0).
+- **Current suite** (2026-11-05, 0.3.1): 21 suites, 165 tests, all passing (162 at 0.3.0, 20 and 151
+  at 0.2.1, 11 and 79 before 0.2.0).
 
 ## Code Style
 

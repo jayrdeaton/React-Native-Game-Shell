@@ -21,7 +21,7 @@ import type { PackDefinition, StackScreenOptions } from '../types'
 let mockDark = false
 const mockStack = jest.fn((_options: StackScreenOptions) => {})
 const mockScreen = jest.fn((_props: { name: string; options?: unknown }) => {})
-const mockNavigationTheme = jest.fn((_value: { colors: { background: string } }) => {})
+const mockNavigationTheme = jest.fn((_value: { dark: boolean; colors: { background: string } }) => {})
 const mockRootBackground = jest.fn((dark: boolean) => ({ contentStyle: { backgroundColor: dark ? 'black' : 'white' } }))
 const mockToastProvider = jest.fn((_props: { paper?: unknown }) => {})
 const mockOrientation = jest.fn((_props: { portraitWhileKeyboard?: boolean }) => {})
@@ -42,7 +42,8 @@ jest.mock('expo-router', () => {
   return {
     Stack,
     DarkTheme: { dark: true, colors: { background: 'rgb(1, 1, 1)', card: 'rgb(2, 2, 2)' } },
-    ThemeProvider: ({ value, children }: { value: { colors: { background: string } }; children: ReactNode }) => {
+    DefaultTheme: { dark: false, colors: { background: 'rgb(242, 242, 242)', card: 'rgb(255, 255, 255)' } },
+    ThemeProvider: ({ value, children }: { value: { dark: boolean; colors: { background: string } }; children: ReactNode }) => {
       mockNavigationTheme(value)
       return <RNView testID='navigation-theme'>{children}</RNView>
     },
@@ -79,7 +80,8 @@ jest.mock('@tastic/core', () => ({
     mockOrientation(props)
     return children
   },
-  useRotationAwareStatusBar: () => ({ statusBarHidden: false }),
+  // The real hook's shape: a style only when one is asked for.
+  useRotationAwareStatusBar: ({ style }: { style?: string } = {}) => ({ statusBarHidden: false, ...(style !== undefined && { statusBarStyle: style }) }),
   useThemedRootBackground: (dark: boolean) => mockRootBackground(dark)
 }))
 jest.mock('@tastic/hud/chrome', () => {
@@ -120,30 +122,58 @@ beforeEach(() => {
   ;[mockStack, mockScreen, mockNavigationTheme, mockRootBackground, mockToastProvider, mockOrientation, mockFrame, mockColorPreview, mockBaseSettings].forEach((mock) => mock.mockClear())
 })
 
+// The phone's own appearance never reaches these: what they follow is the app's theme (mockDark).
+describe("the root follows the app's theme", () => {
+  it('in a light theme: a white root, the navigation theme on the same white, and dark status bar text', async () => {
+    await renderRoot()
+
+    expect(mockRootBackground).toHaveBeenLastCalledWith(false)
+    expect(lastScreenOptions().contentStyle).toEqual({ backgroundColor: 'white' })
+    expect(within(screen.getByTestId('navigation-theme')).getByTestId('stack')).toBeTruthy()
+    expect(mockNavigationTheme.mock.lastCall![0]).toEqual({ dark: false, colors: { background: 'white', card: 'rgb(255, 255, 255)' } })
+    expect(lastScreenOptions().statusBarStyle).toBe('dark')
+  })
+
+  it("in a dark theme: a black root, the navigation theme on the same black (never DefaultTheme's light grey), and light status bar text", async () => {
+    mockDark = true
+    await renderRoot()
+
+    expect(mockRootBackground).toHaveBeenLastCalledWith(true)
+    expect(lastScreenOptions().contentStyle).toEqual({ backgroundColor: 'black' })
+    expect(mockNavigationTheme.mock.lastCall![0]).toEqual({ dark: true, colors: { background: 'black', card: 'rgb(2, 2, 2)' } })
+    expect(lastScreenOptions().statusBarStyle).toBe('light')
+  })
+
+  it("lets the pack's own screen options set the status bar's style over the shell's", async () => {
+    await renderRoot({ useScreenOptions: () => ({ statusBarStyle: 'light' }) })
+
+    expect(lastScreenOptions().statusBarStyle).toBe('light')
+  })
+})
+
 describe("a pack's Backdrop", () => {
   const Backdrop = () => <View testID='backdrop' />
 
-  it('leaves a pack without one with the stack as it was', async () => {
+  it('leaves a pack without one with no backdrop and no crossfade', async () => {
     await renderRoot()
 
     expect(screen.queryByTestId('backdrop')).toBeNull()
-    expect(screen.queryByTestId('navigation-theme')).toBeNull()
-    expect(mockRootBackground).toHaveBeenLastCalledWith(false)
-    expect(lastScreenOptions().contentStyle).toEqual({ backgroundColor: 'white' })
     expect(lastScreenOptions()).not.toHaveProperty('animation')
   })
 
-  it('is drawn once behind the stack, seen through its two layers, with the root window kept dark', async () => {
+  it('is drawn once behind the stack, seen through its two layers, with the root window and status bar kept dark', async () => {
     await renderRoot({ Backdrop })
 
     expect(screen.getAllByTestId('backdrop')).toHaveLength(1)
     const ids = screen.toJSON() && JSON.stringify(screen.toJSON())
     expect(ids!.indexOf('"backdrop"')).toBeLessThan(ids!.indexOf('"navigation-theme"'))
     expect(within(screen.getByTestId('navigation-theme')).getByTestId('stack')).toBeTruthy()
-    expect(mockNavigationTheme.mock.lastCall![0].colors.background).toBe('transparent')
+    expect(mockNavigationTheme.mock.lastCall![0]).toEqual({ dark: true, colors: { background: 'transparent', card: 'rgb(2, 2, 2)' } })
     expect(lastScreenOptions().contentStyle).toEqual({ backgroundColor: 'transparent' })
-    // Light mode too: the backdrop is dark, and a light root window would flash white around it.
+    // Light mode too: the backdrop is dark, and a light root window would flash white around it, and
+    // dark status bar text would vanish on it.
     expect(mockRootBackground).toHaveBeenLastCalledWith(true)
+    expect(lastScreenOptions().statusBarStyle).toBe('light')
     // iOS keeps its own push (Android crossfades).
     expect(lastScreenOptions().animation).toBeUndefined()
   })
