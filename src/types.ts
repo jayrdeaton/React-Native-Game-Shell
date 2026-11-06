@@ -1,5 +1,4 @@
 import type { ThemeAppearance, ThemeSettings } from '@rific/auto-paper'
-import type { ViewRotation } from '@tastic/core'
 import type { AlignResult, PopoverHost } from '@tastic/hud/chrome'
 import type { GuideStep } from '@tastic/hud/guide'
 import type { MenuOption } from '@tastic/hud/lobby'
@@ -39,10 +38,9 @@ export function humanSeatsFor(mode: RoundMode): Seat[] {
 }
 
 // What the loadout's match-options row is handed (see GameLoadout.options): the popover host it
-// shares with seat 1's panel, the screen's rotation, and the colors the row draws with.
+// shares with seat 1's panel, and the colors the row draws with.
 export interface LoadoutOptionsProps {
   host: PopoverHost
-  rotation: ViewRotation
   accentColor: string
   mutedColor: string
   onAccentColor: string
@@ -58,7 +56,6 @@ export interface SeatControlLook {
   seatColor: string
   mutedColor: string
   dark: boolean
-  rotation: ViewRotation
 }
 
 // One game's part of the shared loadout (shell/screens/LoadoutScreen.tsx), built by the game's
@@ -131,7 +128,7 @@ export interface PackGuide {
 }
 
 // A game's rules sheet (GameDefinition.Rules), opened from its tile's rules button on Home. It renders
-// through a Paper Portal into a host Home mounts inside its turned frame, so it's already turned with it.
+// through a Paper Portal into a host Home mounts inside its own frame.
 export interface GameRulesProps {
   visible: boolean
   onDismiss: () => void
@@ -152,11 +149,10 @@ export interface GameDefinition {
   // Seat 2's choices in this game, in menu order. 'nobody' only where the game has a solo mode.
   // Left out by a game for one player only: its loadout has no seat 2 button and every round is solo.
   seatTwo?: readonly SeatTwo[]
-  // How the 2 Player loadout seats its players, to match where the game puts them: always face
-  // to face (or only off the web, where a desktop window seats them side by side), and whether an
-  // upside-down hold swaps who is at the bottom. Only read in 2 Player, so a game without 'person'
-  // among its seatTwo choices can leave it out.
-  twoPlayerSeats?: { faceToFaceOnWeb: boolean; followUpsideDown: boolean }
+  // The 2 Player loadout seats its players side by side (P1 on the left) in a window wider than tall,
+  // to match a game whose board does the same there. Unset, they sit face to face in any window (P1 at
+  // the bottom). Only read in 2 Player, so a game without 'person' among its seatTwo choices leaves it out.
+  sideBySideWhenWide?: boolean
   // The store keys this game mounts (settings, achievements, guide), merged into the pack's store.
   reducers: Record<string, Reducer>
   // Mounted at the app root for the game's lifetime (its stats and achievements context). Left out by
@@ -172,9 +168,8 @@ export interface GameDefinition {
   // board: the shell only remembers which game it was (redux/lastActiveGameSlice.ts). A match that
   // isn't saved (liveplay) shouldn't opt in, or a relaunch would open a fresh one.
   resumable?: boolean
-  // The play screen keeps the status bar while the phone is held upright. Unset, the bar is hidden on
-  // every play screen for the whole round, whatever the angle; set, it's hidden only while the
-  // content is turned, as on every other screen.
+  // The play screen keeps the status bar. Unset, the bar is hidden on every play screen for the whole
+  // round; set, it shows as on every other screen.
   keepStatusBar?: boolean
   // The game's stats sections and its achievement list for the stats screen, for one profile
   // (null is Everyone).
@@ -313,13 +308,10 @@ export interface PackDefinition {
   useScreenOptions?: () => StackScreenOptions
   // The two sounds every button plays, in place of the shell's own.
   useFeedbackSounds?: () => FeedbackSounds
-  // The pack's own toaster, drawn in a frame turned with the phone (with the safe-area insets turned
-  // onto the frame's edges) in place of the shell's. It renders inline: the toast provider is given no
+  // The pack's own toaster, drawn in a frame over the whole app (inside the safe area) in place of the
+  // shell's. It renders inline: the toast provider is given no
   // Paper, so nothing portals it out of the frame.
   Toaster?: ComponentType
-  // Every screen reads upright while the software keyboard is up (@tastic/core's OrientationProvider),
-  // for typing a profile's name with the phone sideways.
-  portraitWhileKeyboard?: boolean
   // false leaves Edge Guard out of Settings (a pack with no edge controls and no Edge Guard plugin).
   edgeGuard?: boolean
   // The theme seat 1's color makes (a muted seed with a harmony), applied whenever the seats' colors or
@@ -352,9 +344,9 @@ export interface PackDefinition {
   newProfileColor?: string
   // Where a picker's menu opens (its alignOverride) on Home (seat 1's button), a loadout's one-human row
   // (both seat buttons; 2 Player keeps each menu in its own player's half), the stats screen (its two
-  // pickers) and Profiles (a profile's color swatch). hud's own placement measures a turned button
-  // against the upright window, so with the phone held sideways it can pick the side with no room and
-  // run the menu off the screen (Solitaire's useFrameAutoAlign places it in the turned frame instead).
+  // pickers) and Profiles (a profile's color swatch). It was added because hud's own placement measured
+  // a button in a frame turned by @tastic/core's drawn rotation against the upright window; nothing turns
+  // since core 0.15, so a pack may no longer need one.
   // `open` is whether this picker's menu is open, the size is its content's, and `maxContentWidth` is a
   // capped column's width the menu stays inside (Profiles' roster). Unset is hud's own placement.
   usePickerAlign?: PickerAlign

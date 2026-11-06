@@ -94,7 +94,7 @@ step 3's additions.
 | `index.ts` | The barrel, the only entry (see Public API). |
 | `types.ts` | `PackDefinition`, `GameDefinition` and everything a game hands the shell (`GameLoadout`, `GameGuide`, `GameIconProps`, `HeroTitleProps`, `LoadoutOptionsProps`, `SeatControlLook`), plus `Seat`, `SeatTwo`, `RoundMode`, `roundModeFor`, `humanSeatsFor`. |
 | `PackContext.tsx` | `PackProvider`, `usePack`, `usePackGame`: how the shell reaches the pack without importing it. |
-| `RootLayout.tsx` | The root: gesture root, safe area, `PackProvider`, `Fonts`, `Providers`, `Theme`, `ProfilesProvider`, every game's `Provider`, the profiles splash gate, `OrientationBridge`, the toaster, `GuideHost`, the stack and `UpdateDialog`. |
+| `RootLayout.tsx` | The root: gesture root, safe area, `PackProvider`, `Fonts`, `Providers`, `Theme`, `ProfilesProvider`, every game's `Provider`, the profiles splash gate, the toaster, `GuideHost`, the stack and `UpdateDialog`. |
 | `navigation.ts` | `safeBack`, `@rific/core`'s with expo-router's `router` injected at import. |
 | `routes.ts` | The shell's own hrefs (`playHref`, `loadoutHref`, `STATS_HREF`, `PROFILES_HREF`), as plain `Href`s. Internal. |
 | `splashGate.ts` | The shell's three splash gates: `theme`, `fonts`, `profiles`. Internal. |
@@ -381,6 +381,19 @@ optional, so a pack without it (PuckTastic, DuelTastic) draws the same Home.
   without tabs). Three fail with the hiding or the clamp taken out. Not seen on a device: the iOS clamp is
   from reading React Native's source and Solitaire's notes, unverified.
 
+## The OS turns, the shell reads the window (0.5.0, 2026-11-06)
+
+Needs `@tastic/core` 0.15 (its seat mode is the window's shape on every platform; it no longer reads the accelerometer or draws a turn). Jay's call (2026-11-06): the drawn rotation was "a misguided venture". DuelTastic and PuckTastic stay portrait on phones, CardTastic's phones rotate, and every tablet rotates with the OS. The plan is `dueltastic-pucktastic-rotation-plan.md` in the Swirlio side-session notes; this is its step 2.
+
+- **Gone:** `OrientationBridge` (and with it the `expo-sensors` peer), Lock Orientation (`appSettings.lockOrientation`/`lockedRotation`, and the Settings row: hud hides it when its props aren't passed), `PackDefinition.portraitWhileKeyboard`, `GameDefinition.twoPlayerSeats`, and the `rotation` the shell handed a pack (`LoadoutOptionsProps.rotation`, `SeatControlLook.rotation`) or took (`SettingsDialog`'s `rotation`). `GuideHost`, `UpdateDialog` and the Settings dialog pass hud no rotation (its default, 0). A saved 0.4 `appSettings` keeps its old lock keys in storage; nothing reads them.
+- **`GameDefinition.sideBySideWhenWide`** replaces `twoPlayerSeats`: the 2 Player loadout seats its players side by side (P1 on the left) in a window wider than tall; unset, face to face in any window. With one person the panels follow the window. The loadout reads `useOrientationState().orientationMode`, hands `useDualZoneLayout` `p1OnRight` false, resolved and not upside down, and its P2 press-away zone is the right half side by side. Old `faceToFaceOnWeb: false` is `sideBySideWhenWide: true` (Snake, AirHockey, Paddles, Breaker, Gin Rummy, Four Crowns); `followUpsideDown` has no replacement.
+- **Plain frames:** Home's and the loadout's `FakeLandscapeView` are a plain `View` (`styles.frame`); `homeLayout` reads `useWindowDimensions()` and `useSafeAreaInsets()`; the loadout reads plain insets. Home's popover still closes on every window change (`homeOptions.test.tsx` now changes the window instead of the rotation).
+- **Status bar:** the stack sets `statusBarStyle` from the theme itself, in place of core's `useRotationAwareStatusBar`. A play screen still hides the bar for the round unless the game has `keepStatusBar`.
+- **Kept:** hud's `RotatedFrame` around the toaster, the stats screen and Profiles, for its safe-area hand-off, portal host and column cap; at rotation 0 it turns nothing. `usePickerAlign` stays, though its reason (a turned frame) is gone.
+- **Each pack, on bumping:** drop `twoPlayerSeats` (set `sideBySideWhenWide: true` where `faceToFaceOnWeb` was false), `portraitWhileKeyboard`, any `rotation` read from the loadout's props or passed to `SettingsDialog`; take the `@tastic/core` plugin out of `app.json` and set `UIViewControllerBasedStatusBarAppearance: true` in `ios.infoPlist`; make a new native build.
+- **Dependencies:** dev `@tastic/core` ^0.15.0 (peer `>=0.15.0`), `expo-sensors` removed, Expo SDK 58 patch updates (`expo` 58.0.23, `react-native` 0.88.1, `expo-router` 58.0.30, `react-native-safe-area-context` 5.11.1 and the rest), `tsup` ^9.0.0, `@reduxjs/toolkit` 2.14. Not moved: what SDK 58 pins (React 19.3.0, gesture-handler 3.3, worklets, async-storage 2.2), Babel 8, ESLint 10, TypeScript 7.
+- Tests: `loadoutSeats.test.tsx` (new: face to face, side by side when wide, one person following the window), and the lock, keyboard and `twoPlayerSeats` cases out of `appSettingsSlice`, `packRoot`, `homeScreen` and `seatlessGames`.
+
 ## Public API
 
 `src/index.ts`, the one entry (`"."`). Served as source under the `react-native` and `browser`
@@ -443,7 +456,7 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   expo-router stood in by its `router` alone), `createPackStore`'s new cases (`seatTheme` seeding the
   theme, `blacklist`, `serializableIgnoredPaths`, `middleware`), `packRoot` (the real `RootLayout`
   with recording stand-ins: `Backdrop`, `useScreenOptions`, `keepStatusBar`, the pack's and a game's
-  `Provider`, `Toaster` with no Paper, `portraitWhileKeyboard`, `previewColor`; Settings' `edgeGuard`;
+  `Provider`, `Toaster` with no Paper, `previewColor`; Settings' `edgeGuard`;
   since 0.3.1 the root following the app's theme, light and dark: the status bar's style, the root
   background and the navigation theme's background, and the pack's style winning over the shell's),
   `feedbackSounds` (the real `Providers`: the shell's two wavs or the pack's), `seatTheme`

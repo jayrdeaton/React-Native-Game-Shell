@@ -1,20 +1,19 @@
-import { clamp, rotateInsets, useRotatedWindowDimensions, useRotation } from '@tastic/core'
+import { clamp } from '@tastic/core'
+import { useWindowDimensions } from 'react-native'
 import { type EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // Home's geometry for a pack whose games have previews (GameDefinition.Preview), ported from
 // Solitaire's components/homeLayout.ts. Upright, Home is the one scrolling column every pack has: the
-// hero, seat 1's button, then a row per game, each row's preview at its start. Held sideways a phone
+// hero, seat 1's button, then a row per game, each row's preview at its start. A landscape phone
 // is only ~400pt tall, and that column would spend the whole height on the hero before showing a
-// single game, so a "wide" layout (any window whose ROTATED footprint is landscape: a phone held
-// sideways, an iPad, a desktop browser) splits it into two panes: the hero and seat 1's button on the
+// single game, so a "wide" layout (any window wider than tall: a landscape phone, a landscape iPad, a
+// desktop browser) splits it into two panes: the hero and seat 1's button on the
 // left, and a scrolling grid of game tiles on the right. The trophy (top-left) and cog (top-right)
 // corner buttons stay where they are; the right pane stops short of the cog so tiles never scroll
 // underneath it. A pack without previews keeps the column at every size.
 //
-// Everything here works in the ROTATED frame's own coordinates (Home's FakeLandscapeView): `width`/
-// `height` are the rotated footprint and `insets` are the safe-area insets already remapped onto the
-// frame's edges (rotateInsets). The rotated top/bottom insets are ~0 under a portrait-locked OS (a
-// phone held sideways only has left/right insets), so nothing here leans on them for breathing room.
+// A landscape phone's top and bottom insets are ~0 (only the sides have them), so nothing here leans
+// on them for breathing room.
 
 // Every preview's width / height: Solitaire's preview canvas (360 x 200), so its deals fit as drawn.
 export const PREVIEW_ASPECT = 360 / 200
@@ -52,15 +51,15 @@ const HOME_LEFT_PANE_BOTTOM_PADDING = 16
 const HOME_HERO_SIDE_ROOM = 16
 
 export interface HomeLayout {
-  // The rotated footprint is landscape: the two-pane layout is in effect (for a pack with previews).
+  // The window is landscape: the two-pane layout is in effect (for a pack with previews).
   isWide: boolean
-  // The window's footprint AFTER rotation.
+  // The window's size.
   windowWidth: number
   windowHeight: number
-  // Safe-area insets remapped onto the rotated frame's own edges (see @tastic/core's rotateInsets).
+  // The safe-area insets.
   insets: EdgeInsets
-  // Wide layout: padding on the two panes' row. Each side hugs ITS OWN inset (a phone held sideways
-  // has a large inset only on the island side), the trailing one also reserves the cog's gutter, and
+  // Wide layout: padding on the two panes' row. Each side hugs ITS OWN inset (a landscape phone has a
+  // large inset only on the island side), the trailing one also reserves the cog's gutter, and
   // both carry the equal margin left over once the content hits its cap. 0 upright.
   paddingLeft: number
   paddingRight: number
@@ -118,12 +117,9 @@ export function computeHomeLayout(windowWidth: number, windowHeight: number, ins
   }
 }
 
-// The live layout for the current window and rotation. Reads useRotatedWindowDimensions()/
-// rotateInsets() rather than raw useWindowDimensions()/useSafeAreaInsets(), so it describes the
-// footprint a rotated Home actually renders into (both are exact identities at 0deg).
+// The live layout for the current window.
 export function useHomeLayout(): HomeLayout {
-  const { width, height } = useRotatedWindowDimensions()
-  const rotation = useRotation()
-  const insets = rotateInsets(useSafeAreaInsets(), rotation)
+  const { width, height } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
   return computeHomeLayout(width, height, insets)
 }

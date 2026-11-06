@@ -35,7 +35,6 @@ export function standInGame(id: string, overrides: Partial<GameDefinition> = {})
     blurb: `What ${id} is.`,
     icon: () => <View testID={`icon-${id}`} />,
     seatTwo: ['cpu', 'person'],
-    twoPlayerSeats: { faceToFaceOnWeb: true, followUpsideDown: false },
     reducers: {},
     Provider: ({ children }) => children,
     useLoadout: () => STAND_IN_LOADOUT,

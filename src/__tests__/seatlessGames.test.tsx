@@ -85,7 +85,7 @@ describe('seatTwoFor', () => {
 })
 
 describe('useActiveRound', () => {
-  const freecell = standInGame('freecell', { seatTwo: undefined, twoPlayerSeats: undefined })
+  const freecell = standInGame('freecell', { seatTwo: undefined })
   const pong = standInGame('pong')
   const pack = standInPack([freecell, pong])
 
@@ -136,7 +136,7 @@ describe('the loadout', () => {
   }
 
   it('has no seat 2 button in a game with no seat 2, and Ready starts a solo round', async () => {
-    const game = standInGame('freecell', { seatTwo: undefined, twoPlayerSeats: undefined, useLoadout: () => ({ ...STAND_IN_LOADOUT, cpuDifficulty: undefined }) }) as LoadoutGame
+    const game = standInGame('freecell', { seatTwo: undefined, useLoadout: () => ({ ...STAND_IN_LOADOUT, cpuDifficulty: undefined }) }) as LoadoutGame
     const store = await renderLoadout(game)
 
     expect(screen.getByTestId('seat-1')).toBeTruthy()

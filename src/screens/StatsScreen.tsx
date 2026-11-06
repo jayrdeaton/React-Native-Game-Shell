@@ -34,7 +34,7 @@ const ALL_GAMES = '__all__'
 const PLAYER_PICKER_ID = 'stats-player'
 const GAME_PICKER_ID = 'stats-game'
 
-// Widest the column gets in the wide layout (a phone held sideways, a desktop window): a list of stat
+// Widest the column gets in the wide layout (a landscape phone, a desktop window): a list of stat
 // rows stretched across an 874pt-wide screen reads badly. Upright it's never capped.
 const STATS_MAX_WIDTH = 640
 
@@ -45,9 +45,8 @@ const STATS_MAX_WIDTH = 640
 // can't be told apart. A pack for one player at a time (PackDefinition.guestStats) keeps a guest's
 // stats under GUEST_PLAYER_ID, offers Guest in the picker and opens on whoever is in seat 1.
 //
-// Turned with the phone in hud's RotatedFrame: its insets remapped onto the frame's edges, the reset
-// confirm portaled into a host inside the frame (so it's turned with it, at rotation 0), and the column
-// capped in the wide layout.
+// In hud's RotatedFrame, which nothing turns since @tastic/core 0.15: it hands the screen the safe-area
+// insets, hosts the reset confirm's portal inside the frame, and caps the column in the wide layout.
 export function StatsScreen() {
   const pickerHost = usePopoverHost()
   return (
@@ -81,7 +80,7 @@ const noPickerAlign = () => undefined
 function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
   const pack = usePack()
   const { dark, colors } = useAutoPaperTheme()
-  // Already remapped onto the turned frame's edges by RotatedFrame's rotatedSafeArea.
+  // Handed over by RotatedFrame's rotatedSafeArea.
   const insets = useSafeAreaInsets()
   const { profiles, lastSelected } = useProfiles()
   const dispatch = useDispatch()

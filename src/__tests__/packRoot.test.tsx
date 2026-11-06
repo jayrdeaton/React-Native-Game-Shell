@@ -12,11 +12,11 @@ import { standInGame, standInPack, standInStore } from '../testUtils/pack'
 import type { PackDefinition, StackScreenOptions } from '../types'
 
 // The pack's root pieces in RootLayout (Backdrop, Provider, useScreenOptions, a game's keepStatusBar,
-// Toaster, portraitWhileKeyboard, previewColor) and Settings' edgeGuard. The real RootLayout over the
+// Toaster, previewColor) and Settings' edgeGuard. The real RootLayout over the
 // real store, with what needs a native runtime replaced: the fonts, persistence, Theme, the profiles
 // gate, the safe area, the How to Play host and the update dialog pass their children through, and expo-router's
-// stack, the navigation theme, the toaster, the orientation provider, the turned frame and the profile
-// color provider record what they're handed.
+// stack, the navigation theme, the toaster, hud's frame and the profile color provider record what
+// they're handed.
 
 let mockDark = false
 const mockStack = jest.fn((_options: StackScreenOptions) => {})
@@ -24,7 +24,6 @@ const mockScreen = jest.fn((_props: { name: string; options?: unknown }) => {})
 const mockNavigationTheme = jest.fn((_value: { dark: boolean; colors: { background: string } }) => {})
 const mockRootBackground = jest.fn((dark: boolean) => ({ contentStyle: { backgroundColor: dark ? 'black' : 'white' } }))
 const mockToastProvider = jest.fn((_props: { paper?: unknown }) => {})
-const mockOrientation = jest.fn((_props: { portraitWhileKeyboard?: boolean }) => {})
 const mockFrame = jest.fn((_props: object) => {})
 const mockColorPreview = jest.fn((_preview: (hex: string) => string) => {})
 const mockBaseSettings = jest.fn((_props: object) => {})
@@ -76,12 +75,6 @@ jest.mock('@rific/toaster', () => {
 })
 jest.mock('@tastic/core', () => ({
   ...jest.requireActual('@tastic/core'),
-  OrientationProvider: ({ children, ...props }: { children: ReactNode; portraitWhileKeyboard?: boolean }) => {
-    mockOrientation(props)
-    return children
-  },
-  // The real hook's shape: a style only when one is asked for.
-  useRotationAwareStatusBar: ({ style }: { style?: string } = {}) => ({ statusBarHidden: false, ...(style !== undefined && { statusBarStyle: style }) }),
   useThemedRootBackground: (dark: boolean) => mockRootBackground(dark)
 }))
 jest.mock('@tastic/hud/chrome', () => {
@@ -119,7 +112,7 @@ const playOptions = () => mockScreen.mock.calls.map(([props]) => props).find((pr
 
 beforeEach(() => {
   mockDark = false
-  ;[mockStack, mockScreen, mockNavigationTheme, mockRootBackground, mockToastProvider, mockOrientation, mockFrame, mockColorPreview, mockBaseSettings].forEach((mock) => mock.mockClear())
+  ;[mockStack, mockScreen, mockNavigationTheme, mockRootBackground, mockToastProvider, mockFrame, mockColorPreview, mockBaseSettings].forEach((mock) => mock.mockClear())
 })
 
 // The phone's own appearance never reaches these: what they follow is the app's theme (mockDark).
@@ -183,7 +176,7 @@ describe("the pack's root pieces", () => {
   it("merges the pack's screen options after the shell's", async () => {
     await renderRoot({ useScreenOptions: () => ({ statusBarStyle: 'light', animation: 'fade', contentStyle: { backgroundColor: 'red' } }) })
 
-    expect(lastScreenOptions()).toEqual(expect.objectContaining({ statusBarHidden: false, statusBarStyle: 'light', animation: 'fade', contentStyle: { backgroundColor: 'red' } }))
+    expect(lastScreenOptions()).toEqual(expect.objectContaining({ statusBarStyle: 'light', animation: 'fade', contentStyle: { backgroundColor: 'red' } }))
   })
 
   it('hides the status bar on a play screen for the whole round, but where the game keeps it', async () => {
@@ -222,14 +215,6 @@ describe("the pack's root pieces", () => {
 
     expect(screen.getByTestId('shell-toaster')).toBeTruthy()
     expect(mockToastProvider.mock.lastCall![0].paper).toBe(RNPaper)
-  })
-
-  it('reads upright while the keyboard is up only where the pack asks', async () => {
-    await renderRoot()
-    expect(mockOrientation.mock.lastCall![0].portraitWhileKeyboard).toBeUndefined()
-
-    await renderRoot({ portraitWhileKeyboard: true })
-    expect(mockOrientation.mock.lastCall![0].portraitWhileKeyboard).toBe(true)
   })
 
   it("draws every profile color through the pack's previewColor, in the live mode", async () => {

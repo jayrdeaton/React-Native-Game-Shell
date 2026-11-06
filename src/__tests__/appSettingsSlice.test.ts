@@ -7,18 +7,12 @@ describe("the shell's appSettingsSlice", () => {
     expect(appSettingsReducer(undefined, { type: '@@INIT' })).toEqual(DEFAULT_APP_SETTINGS)
   })
 
-  it('records the locked angle on lock', () => {
-    const next = appSettingsReducer(DEFAULT_APP_SETTINGS, appSettingsActions.initialize({ lockOrientation: true, lockedRotation: -90 }))
-    expect(next).toEqual({ ...DEFAULT_APP_SETTINGS, lockOrientation: true, lockedRotation: -90 })
-  })
-
-  it('clears lockedRotation when unlocking', () => {
-    const locked = appSettingsReducer(DEFAULT_APP_SETTINGS, appSettingsActions.initialize({ lockOrientation: true, lockedRotation: 180 }))
-    expect(appSettingsReducer(locked, appSettingsActions.initialize({ lockOrientation: false, lockedRotation: undefined })).lockedRotation).toBeUndefined()
+  it('sets Edge Guard', () => {
+    expect(appSettingsReducer(DEFAULT_APP_SETTINGS, appSettingsActions.initialize({ deferBottomEdgeGestures: true }))).toEqual({ deferBottomEdgeGestures: true })
   })
 
   it('fills fields missing from saved app settings with the defaults on rehydrate', () => {
-    const next = appSettingsReducer(undefined, { type: REHYDRATE, payload: { appSettings: { lockOrientation: true } } } as { type: string })
-    expect(next).toEqual({ ...DEFAULT_APP_SETTINGS, lockOrientation: true })
+    const next = appSettingsReducer(undefined, { type: REHYDRATE, payload: { appSettings: {} } } as { type: string })
+    expect(next).toEqual(DEFAULT_APP_SETTINGS)
   })
 })

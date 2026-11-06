@@ -4,9 +4,9 @@ import { join, relative } from 'path'
 
 import { Theme } from '../components/Theme'
 
-// The status bar is set per screen: the root Stack's screen options (_layout.tsx, from @tastic/core's
-// useRotationAwareStatusBar) hide it while the content is turned, and /game hides it for the whole round.
-// That needs UIViewControllerBasedStatusBarAppearance on (@tastic/core's config plugin), and with it on,
+// The status bar is set per screen: the root Stack's screen options (RootLayout's AppStack) give it the
+// theme's style, and /game hides it for the whole round. That needs
+// UIViewControllerBasedStatusBarAppearance on (each app's ios.infoPlist), and with it on,
 // every React Native StatusBar logs an error (a red box in a dev build). An app linked against the iOS
 // 27 SDK can't set the bar app-wide anyway, which is the only way that component works on iOS. So
 // nothing in the app may mount one: not a component here, and not auto-paper's own.

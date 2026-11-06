@@ -1,5 +1,4 @@
 import { useUpdateErrorToast } from '@rific/toaster'
-import { useRotation } from '@tastic/core'
 import { UpdateDialog as SharedUpdateDialog } from '@tastic/hud/chrome'
 
 // Thin bridge onto the fleet-shared @tastic/hud UpdateDialog, which now owns the useUpdater()
@@ -8,6 +7,5 @@ import { UpdateDialog as SharedUpdateDialog } from '@tastic/hud/chrome'
 // directly in _layout.tsx) purely so this app's own onError -> toast wiring has one place to live.
 export function UpdateDialog() {
   const onError = useUpdateErrorToast()
-  const rotation = useRotation()
-  return <SharedUpdateDialog onError={onError} rotation={rotation} />
+  return <SharedUpdateDialog onError={onError} />
 }

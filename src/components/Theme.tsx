@@ -61,8 +61,9 @@ export function Theme({ children }: Props) {
   // iOS/Android (the Settings sheet's and Rules' rows above Done, @tastic/profile's dropdown lists
   // above Manage); without it they just scroll with a hard edge. Web needs nothing.
   // statusBar={false}: auto-paper renders no React Native StatusBar (here or in Appbar.Header). The
-  // status bar is set per screen (_layout.tsx's useRotationAwareStatusBar), and with @tastic/core's
-  // config plugin on, a mounted StatusBar logs an error (a red box in a dev build).
+  // status bar is set through the stack's screen options (RootLayout's AppStack), and with
+  // UIViewControllerBasedStatusBarAppearance on (each app's ios.infoPlist), a mounted StatusBar logs an
+  // error (a red box in a dev build).
   // reanimated is what makes Dialog's own animatedStyle prop do anything (Metro won't pick up a
   // require()-in-try/catch from this package's ESM build, so the module is handed in); nothing else in
   // auto-paper reads it. fontFamily is the pack's (PackDefinition.fontFamily): set, it goes on every

@@ -12,12 +12,11 @@ import type { GameRulesProps, PackDefinition } from '../types'
 // launch and from Settings, a Backdrop under a transparent Home drawn in the pack's foreground, every
 // profile color through previewColor; and, for every pack, the press-away overlay mounted where a press
 // on a row reaches it, the menu closing on a turn, and both scrollers fading at an edge. The real Home
-// over the real store and pack; the window, insets, rotation, router, How to Play host, Settings,
+// over the real store and pack; the window, insets, router, How to Play host, Settings,
 // seat colors and seat 1's button are stand-ins (the button opens its menu on a press), and so are
 // auto-paper's fading scroller and the corner buttons, which record what they're handed.
 
 let mockWindow = { width: 402, height: 874 }
-let mockRotation = 0
 const mockGuide = { openFirstTime: jest.fn((_id: string, next: () => void) => next()), openFor: jest.fn(), openPack: jest.fn(), autoShowPack: jest.fn() }
 const mockSettings = jest.fn((_props: { onShowHowToPlay?: () => void }) => null)
 const mockPicker = jest.fn()
@@ -25,7 +24,6 @@ const mockIconColors: Record<string, string> = {}
 
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({ __esModule: true, default: () => ({ ...mockWindow, scale: 1, fontScale: 1 }) }))
 jest.mock('react-native-safe-area-context', () => ({ ...jest.requireActual('react-native-safe-area-context'), useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) }))
-jest.mock('@tastic/core', () => ({ ...jest.requireActual('@tastic/core'), useRotation: () => mockRotation }))
 jest.mock('@rific/auto-paper', () => {
   const { View: RNView } = require('react-native')
   return { ...jest.requireActual('@rific/auto-paper'), FadingScrollView: ({ children }: { children: unknown }) => <RNView testID='fading-scroller'>{children}</RNView> }
@@ -84,7 +82,6 @@ async function renderHome(overrides: Partial<PackDefinition> = {}, lastActiveGam
 
 beforeEach(() => {
   mockWindow = PHONE
-  mockRotation = 0
   Object.values(mockGuide).forEach((mock) => mock.mockClear())
   mockSettings.mockClear()
   mockPicker.mockClear()
@@ -209,13 +206,13 @@ describe("closing seat 1's menu", () => {
     expect(zIndexOf(dismiss()!)).toBe(5)
   })
 
-  it('happens on every turn of the phone, not only on a switch between layouts', async () => {
+  it('happens on every change of window, not only on a switch between layouts', async () => {
     const view = await renderHome()
     await act(async () => fireEvent.press(screen.getByTestId('seat-1')))
     expect(dismiss()).toBeTruthy()
 
-    // A half turn keeps the upright layout, but the button moves under its menu.
-    mockRotation = 180
+    // A narrower portrait window keeps the upright layout, but the button moves under its menu.
+    mockWindow = { width: 375, height: 812 }
     await act(async () => view.rerender(<HomeScreen />))
     expect(dismiss()).toBeNull()
   })

@@ -1,12 +1,12 @@
 import { defaultColors, getRgb, useAutoPaperTheme } from '@rific/auto-paper'
-import { FakeLandscapeView, getViewRotation, rotateInsets, useOrientationState } from '@tastic/core'
+import { useOrientationState } from '@tastic/core'
 import { CornerActionButtons, PressAwayOverlay, usePopoverHost } from '@tastic/hud/chrome'
 import { PlayerSetupPanel, ReadyButton, SharedActionBand } from '@tastic/hud/lobby'
 import type { Profile } from '@tastic/profile'
 import { DualZoneLayout, needsSharedNeutralZone, useDualZoneLayout } from '@tastic/split-screen'
 import { router, useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Platform, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native'
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useDispatch } from 'react-redux'
@@ -24,11 +24,11 @@ import { liveplayActions } from '../redux/liveplaySlice'
 import { playHref, PROFILES_HREF } from '../routes'
 import { humanSeatsFor, type PackGameDefinition, roundModeFor, type Seat, type SeatTwo, seatTwoFor } from '../types'
 
-// The player-panel area: whenever a real device rotation changes orientationMode or which physical
-// side P1 lands on, the panels fade out, the layout underneath swaps while invisible, then they fade
-// back in - masking what would otherwise be an instant jump-cut as panels reflow or swap sides.
-// Short and symmetric on purpose: this is masking a reflow that already happened at the OS's own
-// pace, not a deliberate reveal.
+// The player-panel area: whenever the window changes shape (a tablet turning, a browser window
+// resized) and the panels go from face to face to side by side or back, they fade out, the layout
+// underneath swaps while invisible, then they fade back in - masking what would otherwise be an
+// instant jump-cut as panels reflow. Short and symmetric on purpose: this is masking a reflow that
+// already happened at the OS's own pace, not a deliberate reveal.
 const PANEL_SWAP_FADE_MS = 180
 
 // A game that has a loadout (GameDefinition.useLoadout): the loadout route sends any other straight
@@ -53,32 +53,24 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   const { openFor } = useGameGuide()
 
   const { profiles, lastSelected, selectProfile } = useProfiles()
-  // orientationMode just follows the device's current physical tilt (see @tastic/core's
-  // useOrientationState), CPU games included - how you're holding the phone right now decides the
-  // panel arrangement, not a stored per-round choice. Lock Orientation pins it app-wide by freezing
-  // the shared reading itself (RootLayout's OrientationBridge), so this read takes no `locked`
-  // argument. The OS is portrait-locked; FakeLandscapeView below fakes the rest in JS.
-  const { orientationMode, p1OnRight, upsideDown, resolved: p1OnRightResolved } = useOrientationState()
+  // The window's shape (@tastic/core's useOrientationState): side by side in a window wider than tall,
+  // face to face otherwise. The OS turns the interface; a portrait-locked phone is always face to face.
+  const { orientationMode } = useOrientationState()
 
-  // The panel area's own layout lags one fade behind the live orientation above - see
-  // useDualZoneLayout's own comment. 2 Player seats its players the way the game's own board does
-  // (GameDefinition.twoPlayerSeats): face to face however the phone is held, P1 in the bottom half
-  // and P2 in the top, flipped for an upside-down hold where the game flips too, so each player gets
-  // the same half here and in the match. On the web a game may seat them side by side instead.
-  const fixedSeats = p2IsHuman && (!!game.twoPlayerSeats?.faceToFaceOnWeb || Platform.OS !== 'web')
-  const fixedUpsideDown = !!game.twoPlayerSeats?.followUpsideDown && orientationMode === 'faceToFace' && upsideDown
-  const { panelLayout, panelFadeStyle } = useDualZoneLayout(fixedSeats ? 'faceToFace' : orientationMode, fixedSeats ? true : p1OnRight, fixedSeats || p1OnRightResolved, fixedSeats ? fixedUpsideDown : upsideDown, PANEL_SWAP_FADE_MS)
+  // The panel area's own layout lags one fade behind the window above - see useDualZoneLayout's own
+  // comment. 2 Player seats its players the way the game's own board does: face to face (P1 in the
+  // bottom half, P2 in the top) in any window, unless the game seats them side by side in a wide one
+  // (GameDefinition.sideBySideWhenWide), P1 on the left, so each player gets the same half here and
+  // in the match. With one person the panels follow the window.
+  const panelMode = p2IsHuman && !game.sideBySideWhenWide ? 'faceToFace' : orientationMode
+  const { panelLayout, panelFadeStyle } = useDualZoneLayout(panelMode, false, true, false, PANEL_SWAP_FADE_MS)
   // split-screen types the fade as a style for any component (useAnimatedStyle's DefaultStyle). An app
   // whose types widen Text's style (Expo's react-native-web types, which a generated expo-env.d.ts pulls
   // in, make its cursor any string) can't hand that to Animated.View. It only ever sets opacity.
   const playersRowFade = panelFadeStyle as unknown as StyleProp<ViewStyle>
 
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // Safe-area insets are relative to the device's fixed portrait frame; rotateInsets remaps them
-  // onto whichever edge they land on once FakeLandscapeView turns the content, so `top`/`left`/
-  // `right` below always mean the screen's real, visual edges.
-  const rotation = getViewRotation(panelLayout.orientationMode, panelLayout.p1OnRight, panelLayout.upsideDown)
-  const insets = rotateInsets(useSafeAreaInsets(), rotation)
+  const insets = useSafeAreaInsets()
   const { colors: themeColors, dark } = useAutoPaperTheme()
   const { p1Color, p2Color, handleP1ColorChange, handleP2ColorChange } = useSeatColors(p2IsHuman)
   const dispatch = useDispatch<Dispatch<Action>>()
@@ -142,9 +134,9 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   const showMetaInSharedBand = needsSharedNeutralZone(panelLayout.orientationMode, humanSeats.length)
 
   // Where P2's own press-away zone lives on screen - matches panelLayout (what's actually painted
-  // right now, mid-fade included). Portrait puts P2's panel in the top half; landscape on whichever
-  // side isn't P1's. Only in 2 Player - otherwise seat 2 shares seat 1's host (see p2Host below).
-  const p2ZoneStyle = p2IsHuman ? (isPortrait ? styles.p2ZoneTop : panelLayout.p1OnRight ? styles.p2ZoneLeft : styles.p2ZoneRight) : null
+  // right now, mid-fade included). Portrait puts P2's panel in the top half; landscape on the right
+  // (P1 sits on the left). Only in 2 Player - otherwise seat 2 shares seat 1's host (see p2Host below).
+  const p2ZoneStyle = p2IsHuman ? (isPortrait ? styles.p2ZoneTop : styles.p2ZoneRight) : null
 
   // With one human, the one Ready button sits under both panels instead of in each.
   const showReadyButton = p2IsHuman
@@ -167,7 +159,6 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
 
   const optionsRow = loadout.options({
     host: controlsHost,
-    rotation,
     accentColor: themeColors.tertiary,
     mutedColor: fgMuted,
     onAccentColor: themeColors.onTertiary,
@@ -186,7 +177,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
     optionsRow
   )
 
-  const controlLook = { accentColor: themeColors.tertiary, mutedColor: fgMuted, dark, rotation }
+  const controlLook = { accentColor: themeColors.tertiary, mutedColor: fgMuted, dark }
   const p1Control = loadout.seatControl(1, controlsHost, { ...controlLook, seatColor: p1Drawn })
   const p1Panel = <PlayerSetupPanel key={`p1-${layoutKey}`} idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} dark={dark} showReadyButton={showReadyButton} secondPicker={p1Control} secondPickerId={p1Control ? 'p1-control' : undefined} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(PROFILES_HREF)} previewValue={seatPreview} triggerStyle={triggerStyle} useSeatPickerAlign={seatPickerAlign} />
   const p2Control = p2IsHuman ? loadout.seatControl(2, p2Host, { ...controlLook, seatColor: p2Drawn }) : undefined
@@ -195,10 +186,8 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
-      {/* Driven by panelLayout (the same committed, fade-masked state DualZoneLayout renders from),
-      so the rotation change and the panel swap land in the same fade-covered moment. The Settings
-      dialog stays outside: it renders through a Portal, turned by its own `rotation`. */}
-      <FakeLandscapeView orientationMode={panelLayout.orientationMode} p1OnRight={panelLayout.p1OnRight} upsideDown={panelLayout.upsideDown} style={styles.rotatable}>
+      {/* The Settings dialog stays outside this frame: it renders through a Portal. */}
+      <View style={styles.frame}>
         {/* Press-away overlays for the loadout's own menus. P1's covers the whole screen (their
         panel plus the match options read as theirs), while P2's covers only their half and, as a
         later sibling, takes priority there. P2's mounts whenever either host has a menu open, so it
@@ -225,15 +214,15 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
           <View style={styles.stackedZone}>
             {sharedControls}
             <Animated.View style={[styles.playersRow, anyPlayerPickerOpen && styles.playersRowOpen, playersRowFade]}>
-              {!isPortrait && panelLayout.p1OnRight ? p2Panel : p1Panel}
-              {!isPortrait && panelLayout.p1OnRight ? p1Panel : p2Panel}
+              {p1Panel}
+              {p2Panel}
             </Animated.View>
             <ReadyButton color={p1Drawn} ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} style={anyPlayerPickerOpen && styles.readyButtonHidden} />
           </View>
         )}
-      </FakeLandscapeView>
+      </View>
 
-      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} rotation={rotation} onShowHowToPlay={() => openFor(game.id)} />
+      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} onShowHowToPlay={() => openFor(game.id)} />
     </View>
   )
 }
@@ -249,12 +238,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
-  p2ZoneLeft: {
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    top: 0,
-    width: '50%'
+  // A real full-bleed box to size the absolutely-positioned children against.
+  frame: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 32,
+    justifyContent: 'center',
+    paddingHorizontal: 16
   },
   p2ZoneRight: {
     bottom: 0,
@@ -288,14 +278,6 @@ const styles = StyleSheet.create({
   readyButtonHidden: {
     opacity: 0,
     pointerEvents: 'none'
-  },
-  // A real full-bleed box for FakeLandscapeView to size its absolutely-positioned children against.
-  rotatable: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 32,
-    justifyContent: 'center',
-    paddingHorizontal: 16
   },
   stackedZone: {
     alignItems: 'center',

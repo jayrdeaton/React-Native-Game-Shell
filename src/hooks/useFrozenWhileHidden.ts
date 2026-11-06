@@ -5,9 +5,9 @@ import { useState } from 'react'
 // Solitaire's components/useFrozenWhileHidden.ts as it was.
 //
 // Home holds its layout with it while another screen covers it (screens/HomeScreen.tsx): Home stays
-// mounted beneath every screen the stack pushes and keeps following the rotation, and crossing the
+// mounted beneath every screen the stack pushes and keeps following the window, and crossing the
 // upright/wide threshold swaps its whole tree (every tile, the hero, seat 1's button), invisible work
-// landing in the same commit as the covering screen's own rotation update. While covered the layout is
+// landing in the same commit as the covering screen's own update for the new window. While covered the layout is
 // held where it was; it catches up (one swap, visible) when Home is shown again.
 export function useFrozenWhileHidden<T>(value: T, hidden: boolean): T {
   // React's own sanctioned "adjust state during render" shape (see react.dev's guide of the same

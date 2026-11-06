@@ -253,7 +253,7 @@ describe("closing a picker's menu", () => {
 })
 
 describe('the screen', () => {
-  it('turns with the phone, its reset confirm in the frame and its column capped in the wide layout', async () => {
+  it('keeps its reset confirm in the frame and its column capped in the wide layout', async () => {
     await renderStats()
 
     expect(mockFrame).toHaveBeenLastCalledWith(expect.objectContaining({ rotatedSafeArea: true, portalHost: true, maxContentWidth: 640 }))

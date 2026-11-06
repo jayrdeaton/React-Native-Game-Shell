@@ -84,7 +84,7 @@ afterEach(() => {
 
 describe('a game with no loadout', () => {
   const pong = standInGame('pong')
-  const klondike = standInGame('klondike', { useLoadout: undefined, seatTwo: undefined, twoPlayerSeats: undefined })
+  const klondike = standInGame('klondike', { useLoadout: undefined, seatTwo: undefined })
   const pack = standInPack([pong, klondike], { HeroTitle: mockHero })
 
   it('opens straight to its play screen from Home, after its How to Play the first time', async () => {

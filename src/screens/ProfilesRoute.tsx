@@ -6,7 +6,7 @@ import { useProfiles } from '../hooks/useProfiles'
 import { safeBack } from '../navigation'
 import { usePack } from '../PackContext'
 
-// Widest the roster gets in the wide layout (a phone held sideways, a desktop window). Upright it's
+// Widest the roster gets in the wide layout (a landscape phone, a desktop window). Upright it's
 // never capped.
 const ROSTER_MAX_WIDTH = 640
 
@@ -14,10 +14,10 @@ const ROSTER_MAX_WIDTH = 640
 // stats and achievements in every game: each game's reducers listen for the removal (see
 // onProfileRemoved.ts).
 //
-// Turned with the phone like every other screen, in hud's RotatedFrame: ProfilesManager reads the
-// safe-area insets itself (the header's padding), so they're handed over remapped onto the frame's
-// edges (rotatedSafeArea); its delete confirm is a Paper Portal, which lands in a host inside the frame
-// and is turned with it (portalHost); and the roster's column is capped in the wide layout. Over a
+// In hud's RotatedFrame, which nothing turns since @tastic/core 0.15: ProfilesManager reads the
+// safe-area insets itself (the header's padding), handed over by rotatedSafeArea; its delete confirm is a
+// Paper Portal, which lands in a host inside the frame (portalHost); and the roster's column is capped in
+// the wide layout. Over a
 // pack's Backdrop the screen is transparent, drawn in the pack's foreground.
 // The pack's own placement for a profile's color swatch (PackDefinition.usePickerAlign), kept inside the
 // roster's capped column: the roster scrolls in it, which clips the menu at its edges. Handed to

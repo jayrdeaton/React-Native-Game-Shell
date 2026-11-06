@@ -17,7 +17,7 @@ package ecosystem, on [`@tastic/hud`](https://github.com/jayrdeaton/react-native
 ## What's in here
 
 - **`RootLayout`**: the root of the app (gesture root, safe area, fonts, Redux and its persist gate,
-  the theme, profiles, every game's own provider, the splash gates, the shared orientation reading,
+  the theme, profiles, every game's own provider, the splash gates,
   toasts, How to Play, the OTA update dialog) around expo-router's stack. The stack follows the app's
   own theme, not the phone's light or dark appearance: the status bar's text, the root window and the
   navigation theme's background (what shows in a sliding screen's corners during a push or pop).
@@ -116,8 +116,7 @@ PuckTastic and DuelTastic draw what they always did:
 | `Provider?` | Mounted once around How to Play and the stack, inside the store, the theme, profiles and every game's `Provider` (one stats context across the pack's games). |
 | `useScreenOptions?` | A hook returning stack screen options (`StackScreenOptions`), merged after the shell's own (a status bar style of the pack's own, Reduce Motion's crossfade). The shell's already follow the app's theme, and stay dark over a `Backdrop`. |
 | `useFeedbackSounds?` | A hook returning the two sounds every button plays (`FeedbackSounds`: `selection`, `notification`), in place of the shell's two wavs. |
-| `Toaster?` | The pack's own toaster, drawn in a frame turned with the phone (with the safe-area insets turned onto its edges) in place of the shell's. The toast provider is given no Paper, so nothing portals it out of the frame. |
-| `portraitWhileKeyboard?` | Every screen reads upright while the software keyboard is up (`@tastic/core`'s `OrientationProvider`), for naming a profile sideways. |
+| `Toaster?` | The pack's own toaster, drawn in a frame over the whole app (inside the safe area) in place of the shell's. The toast provider is given no Paper, so nothing portals it out of the frame. |
 | `edgeGuard?` | `false` leaves Edge Guard out of Settings (no edge controls, no Edge Guard plugin). |
 | `seatTheme?` | `(colors, dark) => ({ color, harmony })`: the theme the seats' colors make (a muted seed from seat 1's color), applied whenever they or dark mode change and as a fresh install's theme, in place of a triad of the raw colors. With it, `useSeatColors` reads each seat's color from where it's remembered (`seatColors`) rather than from the theme. |
 | `previewColor?` | `(hex, dark) => string`: how every profile color is drawn (the seat buttons and their swatches on Home and in the loadouts, a loadout's Ready button and seat controls, each `ProfileChip`), mounted as `@tastic/profile`'s `ProfileColorProvider`. Saved colors stay as picked. |
@@ -129,15 +128,15 @@ PuckTastic and DuelTastic draw what they always did:
 | `resetStats?` | The stats screen's Reset where the pack resets stats itself (`PackStatsReset`: a `useReset` hook returning `(profileId) => void`, and the `labels` for a player's name, Guest, or `null` for Everyone). It follows the player picker, not the game picker. |
 | `statsGameTitles?` | `false` leaves each game's name off its sections on All Games, where the sections name it. |
 | `newProfileColor?` | A new profile's starting color on Profiles. Unset is auto-paper's first swatch. |
-| `usePickerAlign?` | `(open, contentWidth, contentHeight, options?) => AlignResult` (`PickerAlign`), a hook: where seat 1's menu on Home, both seat buttons' menus in a loadout's one-human row (2 Player keeps each menu in its own player's half), the stats screen's two pickers and a profile's color swatch open. hud's own placement measures a turned button against the upright window, so with the phone held sideways it can run a menu off the screen (seen on the iOS simulator, 2026-10-29); a pack whose screens turn hands in a frame-aware one (Solitaire's `useFrameAutoAlign`). Profiles passes `{ maxContentWidth: 640 }`, its roster's column. Unset is hud's placement. |
-| `homeTabs?` | Tabs splitting Home's games (`HomeTab`: a `label`, and `includes(game)`, which of the pack's games it shows, in the pack's order): a switch under seat 1's button, or over the grid on a wide screen, on the theme's surface over a `Backdrop`, showing one tab's games at a time. It opens on the first tab and keeps the one picked while Home is covered or turns. The other tabs' games stay mounted, hidden, so a switch draws nothing new. A game no tab includes isn't on Home. Unset, or a single tab, shows every game with no switch. Solitaire's: Solitaire (no `seatTwo`) and Two Player. |
+| `usePickerAlign?` | `(open, contentWidth, contentHeight, options?) => AlignResult` (`PickerAlign`), a hook: where seat 1's menu on Home, both seat buttons' menus in a loadout's one-human row (2 Player keeps each menu in its own player's half), the stats screen's two pickers and a profile's color swatch open. It was added because hud's own placement measured a button in a frame turned by `@tastic/core`'s drawn rotation against the upright window (Solitaire's `useFrameAutoAlign`); nothing turns since core 0.15, so a pack may no longer need one. Profiles passes `{ maxContentWidth: 640 }`, its roster's column. Unset is hud's placement. |
+| `homeTabs?` | Tabs splitting Home's games (`HomeTab`: a `label`, and `includes(game)`, which of the pack's games it shows, in the pack's order): a switch under seat 1's button, or over the grid on a wide screen, on the theme's surface over a `Backdrop`, showing one tab's games at a time. It opens on the first tab and keeps the one picked while Home is covered or the window changes. The other tabs' games stay mounted, hidden, so a switch draws nothing new. A game no tab includes isn't on Home. Unset, or a single tab, shows every game with no switch. Solitaire's: Solitaire (no `seatTwo`) and Two Player. |
 
 ### `GameDefinition`
 
 Each game is one object: its `id`, `title`, `blurb` and `icon` (a component drawn in the seats'
 colors, or `imageGameIcon({ light, dark })` for a light and dark pair of pictures), its seat 2
-choices (`seatTwo`: `'cpu'`, `'person'`, `'nobody'`) and how 2 Player seats its players
-(`twoPlayerSeats`), the store `reducers` it mounts, its root `Provider`, its `useLoadout(mode)`, its
+choices (`seatTwo`: `'cpu'`, `'person'`, `'nobody'`) and whether 2 Player seats its players side by
+side in a wide window (`sideBySideWhenWide`), the store `reducers` it mounts, its root `Provider`, its `useLoadout(mode)`, its
 `PlayScreen`, its `StatsSections` and `AchievementList`, `resetStats`, and its How to Play `guide`.
 See `src/types.ts` for every field.
 
@@ -145,7 +144,7 @@ What a game can leave out or add, each optional, so a two-seat game sets none of
 
 | Field | |
 | --- | --- |
-| no `seatTwo` (nor `twoPlayerSeats`) | A game for one player: its loadout has no seat 2 button, every round is solo (`useActiveRound` falls back to `'solo'`), and its How to Play describes a solo round. |
+| no `seatTwo` (nor `sideBySideWhenWide`) | A game for one player: its loadout has no seat 2 button, every round is solo (`useActiveRound` falls back to `'solo'`), and its How to Play describes a solo round. |
 | no `useLoadout` | Nothing to set up first: Home opens its play screen straight away, after its How to Play the first time, and a link to its loadout plays it. Its rule variants go in its play screen's Settings: `<SettingsDialog>` takes `children`. |
 | no `cpuDifficulty` (in `GameLoadout`) | A CPU with no levels: seat 2's menu offers one plain CPU. |
 | `resumable` | A cold launch drops the player back into its play screen if they left the app there rather than backing out of it. The shell remembers only which game (`lastActiveGame`); the game saves and restores its own board. |
@@ -154,8 +153,8 @@ What a game can leave out or add, each optional, so a two-seat game sets none of
 | no `Provider` | A game whose stats live in the pack's own `Provider`. |
 | no `AchievementList`, no `resetStats` | A game whose achievements are in the pack's one list, and whose stats the pack resets (`PackDefinition.AchievementList`, `resetStats`). |
 | no `guide` (`GuidelessGameDefinition`) | A game the pack's own `guide` teaches: its tile opens without cards the first time. A `GameDefinition` keeps `guide` required, so a pack's code that reads its games' cards keeps compiling; `PackDefinition.games` takes either (`PackGameDefinition`). |
-| `Rules` | Its tile's rules button opens this sheet (`GameRulesProps`: `visible`, `onDismiss`) in place of its How to Play. It portals into a host inside Home's turned frame, so it's laid out against the frame and turned with it. |
-| `keepStatusBar` | Its play screen keeps the status bar while the phone is held upright. Unset, every play screen hides it for the whole round. |
+| `Rules` | Its tile's rules button opens this sheet (`GameRulesProps`: `visible`, `onDismiss`) in place of its How to Play. It portals into a host inside Home's frame, so it's laid out against Home's safe area. |
+| `keepStatusBar` | Its play screen keeps the status bar. Unset, every play screen hides it for the whole round. |
 
 A game never imports another game, and the shell never imports a game: games reach the shell only
 through the pack (`usePack()`).
@@ -176,14 +175,26 @@ through the pack (`usePack()`).
 
 Six fixes CardTastic's move brought to every pack's screens: Home's press-away overlay sits in the
 scroller beside seat 1's button in the upright layout (as the frame's first child it was under the whole
-scroller, so a press on a row played the game), seat 1's menu closes on every turn of the phone, both of
+scroller, so a press on a row played the game), seat 1's menu closes on every change of window, both of
 Home's scrollers fade out at an edge with more past it (auto-paper's `FadingScrollView`), a press
 anywhere on the stats screen (its header and margins too) closes a picker's menu, the stats screen's
-column is capped at 640pt in the wide layout, and Profiles turns with the phone (hud's `RotatedFrame`,
-its roster capped at 640pt in the wide layout). Every hud import goes through `@tastic/hud/chrome`,
+column is capped at 640pt in the wide layout, and Profiles' roster is capped at 640pt in the wide
+layout (hud's `RotatedFrame`, which nothing turns any more). Every hud import goes through `@tastic/hud/chrome`,
 `/guide` or `/lobby`, so an app with no Skia can install the shell; a pack's own imports don't change.
 The shell's routes are handed to expo-router as plain `Href`s, so an app with typed routes type-checks
 the shell before its own routes match.
+
+### The OS turns (0.5.0)
+
+Needs `@tastic/core` 0.15, where the seat mode is the window's shape on every platform. The shell no
+longer reads the accelerometer, draws a turn or offers Lock Orientation. A pack bumping to it:
+
+- replaces `twoPlayerSeats` with `sideBySideWhenWide: true` on the games whose 2 Player seats go side by
+  side in a wide window (where `faceToFaceOnWeb` was false), and drops it elsewhere;
+- drops `portraitWhileKeyboard`, and any `rotation` it read from the loadout's props or passed to
+  `SettingsDialog`;
+- takes `"@tastic/core"` out of `app.json`'s plugins, sets `UIViewControllerBasedStatusBarAppearance: true`
+  in `ios.infoPlist` (the stack sets the status bar per screen), and makes a new native build.
 
 ## Peer dependencies
 
@@ -198,7 +209,7 @@ became a package (the lower of the two where they differ).
 | `expo-splash-screen`, `@rific/splash-gate` | >=58.0.10, >=0.2.3 | holding the splash screen until the theme, fonts and profiles are ready |
 | `expo-constants` | >=58.0.12 | the web tab title |
 | `expo-blur`, `@react-native-masked-view/masked-view` | >=58.0.4, >=0.3.2 | auto-paper's blur and its scroll fade, Home's fading scrollers |
-| `expo-haptics`, `expo-keep-awake`, `expo-sensors` | >=58.0.7, >=58.0.3, >=58.0.4 | the toaster's haptics, Keep Awake, the orientation reading |
+| `expo-haptics`, `expo-keep-awake` | >=58.0.7, >=58.0.3 | the toaster's haptics, Keep Awake |
 | `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context` | >=3.3.0, >=4.7.1, >=5.10.1 | the gesture root, auto-paper's dialogs and the loadout's fades, insets |
 | `react-native-paper` | >=5.15.3 | text, icons, the toaster and feedback-press |
 | `@reduxjs/toolkit`, `redux`, `react-redux`, `redux-persist`, `@react-native-async-storage/async-storage` | >=2.13.0, >=5.0.1, >=9.3.0, >=6.0.0, >=2.2.0 | the store and where it's saved |
@@ -206,7 +217,7 @@ became a package (the lower of the two where they differ).
 | `@rific/core` | >=0.5.0 | settings slices, Keep Awake, `safeBack` |
 | `@rific/feedback-press` | >=0.13.1 | haptic and sound settings, the UI sounds |
 | `@rific/toaster` | >=0.10.1 | toasts (DuelTastic runs 0.12, PuckTastic 0.10) |
-| `@tastic/core` | >=0.14.0 | orientation, rotation, the status bar and root background |
+| `@tastic/core` | >=0.15.0 | the seat mode from the window's shape, the root background |
 | `@tastic/hud` | >=0.27.1 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0; 0.27.1's options for a pack drawn on its own backdrop), How to Play |
 | `@tastic/profile` | >=0.16.2 | profiles, the seat buttons, seat colors |
 | `@tastic/achievements` | >=0.6.0 | `createGameStats`, `forgetProfileAchievements` |

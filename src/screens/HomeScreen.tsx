@@ -1,6 +1,5 @@
 import { defaultColors, FadingScrollView, useAutoPaperTheme } from '@rific/auto-paper'
 import { IconButton, Pressable } from '@rific/feedback-press'
-import { FakeLandscapeView, useRotation } from '@tastic/core'
 import { PressAwayOverlay, usePopoverHost, useWellColors, WELL_SHADOW } from '@tastic/hud/chrome'
 import { getProfilePickerContentSize, type Profile, ProfilePicker, type ProfilePickerColorSection } from '@tastic/profile'
 import { Redirect, router, useIsFocused } from 'expo-router'
@@ -53,7 +52,6 @@ export function HomeScreen() {
 
 function HomeMenu() {
   const pack = usePack()
-  const rotation = useRotation()
   const layout = useHomeLayout()
   const { insets } = layout
   const { dark, colors } = useAutoPaperTheme()
@@ -79,7 +77,7 @@ function HomeMenu() {
 
   // Tiles: while any game in the pack has a preview, a wide screen lays the games out as a grid beside
   // the hero (homeLayout.ts). Home stays mounted beneath every screen the stack pushes and keeps
-  // following the rotation, so while it's covered the layout is held where it was (see
+  // following the window, so while it's covered the layout is held where it was (see
   // useFrozenWhileHidden); it catches up when Home is shown again. Only the choice of layout is held:
   // the panes' numbers follow the window, unseen under the screen covering Home.
   const tiled = pack.games.some((game) => game.Preview)
@@ -95,13 +93,13 @@ function HomeMenu() {
     return () => cancelAnimationFrame(id)
   }, [tiled])
   // A popover is placed once, as it opens, from measurements of the frame it opens in. Turning the
-  // phone (or any resize) moves the frame under it, and switching between the column and the two panes
+  // device (or any resize) moves the frame under it, and switching between the column and the two panes
   // unmounts the very button it hangs off, which would leave the press-away overlay up with nothing to
   // dismiss. So every layout change closes it.
   const closePicker = pickerHost.close
   useEffect(() => {
     closePicker()
-  }, [isWide, rotation, layout.windowWidth, layout.windowHeight, closePicker])
+  }, [isWide, layout.windowWidth, layout.windowHeight, closePicker])
 
   // Over the pack's Backdrop Home draws nothing of its own behind the menu.
   const bg = pack.Backdrop ? 'transparent' : dark ? '#000000' : '#FFFFFF'
@@ -150,10 +148,9 @@ function HomeMenu() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
-      {/* Reads correctly however the phone is held: see @tastic/core's FakeLandscapeView. The
-      Settings dialog stays outside it: it renders through a Portal, turned by its own `rotation`. A
-      game's rules sheet renders inside it instead (see RulesHost). */}
-      <FakeLandscapeView style={styles.rotatable}>
+      {/* The Settings dialog stays outside this frame: it renders through a Portal. A game's rules
+      sheet renders inside it instead (see RulesHost). */}
+      <View style={styles.frame}>
         <RulesHost enabled={pack.games.some((game) => game.Rules)}>
           {isWide ? (
             <>
@@ -201,11 +198,11 @@ function HomeMenu() {
           <IconButton icon='cog' iconColor={fg} size={24} style={[styles.corner, { top: 8 + insets.top, right: 8 + insets.right }]} onPress={() => setSettingsOpen(true)} accessibilityLabel='Settings' />
           {RulesSheet && <RulesSheet visible onDismiss={() => setRulesGame(null)} />}
         </RulesHost>
-      </FakeLandscapeView>
+      </View>
 
       {/* Home's How to Play row replays the pack's own cards (PackDefinition.guide); without them each
       tile's rules button shows its game's. */}
-      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} rotation={rotation} onShowHowToPlay={pack.guide ? openPack : undefined} />
+      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} onShowHowToPlay={pack.guide ? openPack : undefined} />
     </View>
   )
 }
@@ -258,9 +255,8 @@ function hasRules(game: PackGameDefinition): boolean {
   return !!(game.Rules || game.guide)
 }
 
-// A game's rules sheet (GameDefinition.Rules) portals into a Paper host inside Home's turned frame, so
-// it's turned with the frame and laid out against it (a sheet laid out against the upright window ran
-// off a phone held sideways). Only in a pack with one: a pack without keeps the frame as it was.
+// A game's rules sheet (GameDefinition.Rules) portals into a Paper host inside Home's frame, so it's
+// laid out against Home's safe area. Only in a pack with one: a pack without keeps the frame as it was.
 function RulesHost({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   return enabled ? <Portal.Host>{children}</Portal.Host> : <>{children}</>
 }
@@ -386,6 +382,9 @@ const styles = StyleSheet.create({
   corner: {
     position: 'absolute'
   },
+  frame: {
+    flex: 1
+  },
   // The wide layout's tiles: wrapped rows of tiles the layout sizes to fill the pane's width.
   grid: {
     flexDirection: 'row',
@@ -431,9 +430,6 @@ const styles = StyleSheet.create({
   },
   previewIcon: {
     overflow: 'hidden'
-  },
-  rotatable: {
-    flex: 1
   },
   // A well (@tastic/hud's wellSurface): the theme's surface on MD3's level-1 shadow, the same surface
   // as Solitaire's game rows, the stats screen's sections and every dialog.

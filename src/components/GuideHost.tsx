@@ -1,4 +1,4 @@
-import { useIsTouchPrimaryDevice, useRotation } from '@tastic/core'
+import { useIsTouchPrimaryDevice } from '@tastic/core'
 import { GuideProvider, useGuide } from '@tastic/hud/guide'
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { shallowEqual, useDispatch, useSelector, useStore } from 'react-redux'
@@ -38,9 +38,8 @@ interface Props {
 // the pack's own (PackDefinition.guide, cards that teach every game at once), or a game's. Each
 // game's cards come from its own registry entry (GameDefinition.guide), built from the live settings
 // and seat 2 so a replay after any loadout change describes the next match. Mounted around the stack
-// in RootLayout, inside the toast provider and OrientationBridge because the card renders through a
-// Portal and turns with the shared reading (`rotation`, the same one Home hands its Settings dialog),
-// and inside the profiles gate so it mounts together with Home.
+// in RootLayout, inside the toast provider because the card renders through a Portal, and inside the
+// profiles gate so it mounts together with Home.
 export function GuideHost({ children }: Props) {
   const pack = usePack()
   const [subject, setSubject] = useState(() => (pack.guide ? PACK_GUIDE : (pack.games.find((g) => g.guide)?.id ?? null)))
@@ -48,7 +47,6 @@ export function GuideHost({ children }: Props) {
   const game = subject === PACK_GUIDE ? undefined : pack.games.find((g) => g.id === subject)
   const gameGuide = game?.guide
 
-  const rotation = useRotation()
   const touch = useIsTouchPrimaryDevice()
   const seatTwo = useSelector((state: ShellState) => state.opponent.seatTwo)
   const input = useSelector((state: ShellState) => (gameGuide ? gameGuide.selectInput(state) : NO_INPUT), shallowEqual)
@@ -68,7 +66,7 @@ export function GuideHost({ children }: Props) {
   )
 
   return (
-    <GuideProvider steps={steps} currentVersion={(packGuide ?? gameGuide)?.version ?? 0} seenVersion={seenVersion} onSeen={onSeen} rotation={rotation}>
+    <GuideProvider steps={steps} currentVersion={(packGuide ?? gameGuide)?.version ?? 0} seenVersion={seenVersion} onSeen={onSeen}>
       <GameGuideBridge onPick={setSubject}>{children}</GameGuideBridge>
     </GuideProvider>
   )
