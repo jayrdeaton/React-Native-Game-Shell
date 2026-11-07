@@ -15,6 +15,7 @@ export { StatsScreen } from './screens/StatsScreen'
 // What a game's own screens use.
 export { useGameGuide } from './components/GuideHost'
 export { imageGameIcon } from './components/imageGameIcon'
+export { MATCH_CHIPS_DESKTOP_MIN_WIDTH, MATCH_CHIPS_FADE_MS, MatchChips, type MatchChipsProps } from './components/MatchChips'
 export { SettingsDialog, type SettingsDialogProps } from './components/SettingsDialog'
 export { useActiveRound } from './hooks/useActiveRound'
 export { useAppSettings } from './hooks/useAppSettings'

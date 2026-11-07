@@ -196,6 +196,21 @@ longer reads the accelerometer, draws a turn or offers Lock Orientation. A pack 
 - takes `"@tastic/core"` out of `app.json`'s plugins, sets `UIViewControllerBasedStatusBarAppearance: true`
   in `ios.infoPlist` (the stack sets the status bar per screen), and makes a new native build.
 
+### The chips over a match (0.6.0)
+
+`MatchChips` is every game's back and settings chips during a match, so they sit and show the same
+way in every game of every pack. A play screen renders it with `playing` (true while play is on: a
+live puck, a shot in flight, a round being ridden), `faceToFace` (two players at opposite ends of the
+screen right now) and `onBack`/`onSettings`, plus `centerLineY` when the line between the players isn't
+the window's middle.
+
+- **Where:** the window's top corners; 2 Player face to face, the side edges at the line between the
+  players (the top corners are the far player's end); desktop web (a browser window at least
+  `MATCH_CHIPS_DESKTOP_MIN_WIDTH`, 768, wide), the page's top corners always.
+- **When:** faded out over `MATCH_CHIPS_FADE_MS` (150) and not pressable while `playing`, back the moment
+  it stops; up all match on desktop web.
+- **Look:** a 24 icon in the theme's full contrast on a translucent chip of the page's color.
+
 ## Peer dependencies
 
 None are bundled. The floors are the versions PuckTastic and DuelTastic ran the shell on when it

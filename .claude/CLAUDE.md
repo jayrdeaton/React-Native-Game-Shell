@@ -394,6 +394,20 @@ Needs `@tastic/core` 0.15 (its seat mode is the window's shape on every platform
 - **Dependencies:** dev `@tastic/core` ^0.15.0 (peer `>=0.15.0`), `expo-sensors` removed, Expo SDK 58 patch updates (`expo` 58.0.23, `react-native` 0.88.1, `expo-router` 58.0.30, `react-native-safe-area-context` 5.11.1 and the rest), `tsup` ^9.0.0, `@reduxjs/toolkit` 2.14. Not moved: what SDK 58 pins (React 19.3.0, gesture-handler 3.3, worklets, async-storage 2.2), Babel 8, ESLint 10, TypeScript 7.
 - Tests: `loadoutSeats.test.tsx` (new: face to face, side by side when wide, one person following the window), and the lock, keyboard and `twoPlayerSeats` cases out of `appSettingsSlice`, `packRoot`, `homeScreen` and `seatlessGames`.
 
+## The chips over a match (0.6.0, 2026-11-06)
+
+Jay, from PuckTastic: during play the back and settings chips have to get out of the way, and in 2
+Player sit between the players, not at player 2's end; and buttons and overlays like these should be
+one shared layout, not each game's own (PuckTastic's Box Hockey, Air Hockey and paddle games, and
+DuelTastic's match overlay and Snake each had their own, placed and shown differently). He picked the
+window's top corners for one human (vs CPU, solo), the spot hud's `CornerActionButtons` uses on every
+other screen. `src/components/MatchChips.tsx`: top corners; side edges at `centerLineY` (default the
+window's middle) when `faceToFace` and not desktop web; faded out (150ms) and `pointerEvents='none'`
+while `playing`, except on desktop web (web and at least 768 wide, the games' own cutoff), where they
+stay up in the page's corners. The look is Box Hockey's (Jay's reference): the theme's full-contrast
+icon on a 55% translucent chip of the page color. The game decides what `playing` and `faceToFace` mean
+for it; the shell owns the where, when and look. Tested in `matchChips.test.tsx`.
+
 ## Public API
 
 `src/index.ts`, the one entry (`"."`). Served as source under the `react-native` and `browser`
@@ -407,7 +421,7 @@ default-exported reducers are exported by name (`appSettingsReducer`, `liveplayR
 `PackStatsSectionsProps` and `PREVIEW_ASPECT` (the shape a game's `Preview` draws in). 0.2.0 added
 `GUEST_PLAYER_ID` and the types `GuidelessGameDefinition`, `PackGameDefinition`, `PackGuide`,
 `GameRulesProps`, `StackScreenOptions`, `FeedbackSounds`, `PackStatsTab`, `PackStatsReset` and
-`PickerAlign`. 0.4.0 added the type `HomeTab` (Home's tabs).
+`PickerAlign`. 0.4.0 added the type `HomeTab` (Home's tabs). 0.6.0 added `MatchChips`, its props type, `MATCH_CHIPS_DESKTOP_MIN_WIDTH` and `MATCH_CHIPS_FADE_MS`.
 
 ## Peer Dependencies
 
