@@ -111,7 +111,7 @@ PuckTastic and DuelTastic draw what they always did:
 
 | Field | |
 | --- | --- |
-| `Backdrop?` | A table drawn once behind the whole stack (Solitaire's felt). The stack's two layers go transparent (the screens' `contentStyle` and the navigation theme's `colors.background`, which React Navigation paints around every screen), the root window stays dark so light mode doesn't flash white on a push, Android's push and pop crossfade (its default holds the outgoing screen opaque), and Home, each loadout, the stats screen and Profiles draw transparent, with their buttons and tabs on the theme's surface. |
+| `Backdrop?` | A table drawn once behind the whole stack (Solitaire's felt). The stack's two layers go transparent (the screens' `contentStyle` and the navigation theme's `colors.background`, which React Navigation paints around every screen), the root window stays dark so light mode doesn't flash white on a push, Android's push and pop crossfade (its default holds the outgoing screen opaque), and Home, each loadout, the stats screen and Profiles draw transparent, with their buttons and tabs on the theme's surface (a loadout's Ready buttons too, filled with the seat's color once ready). |
 | `foreground?` | The color of what those screens draw straight on the background (the hero, the corner buttons, headers), and at half strength a loadout's muted options. Unset is black or white with the theme. |
 | `Provider?` | Mounted once around How to Play and the stack, inside the store, the theme, profiles and every game's `Provider` (one stats context across the pack's games). |
 | `useScreenOptions?` | A hook returning stack screen options (`StackScreenOptions`), merged after the shell's own (a status bar style of the pack's own, Reduce Motion's crossfade). The shell's already follow the app's theme, and stay dark over a `Backdrop`. |
@@ -135,8 +135,8 @@ PuckTastic and DuelTastic draw what they always did:
 
 Each game is one object: its `id`, `title`, `blurb` and `icon` (a component drawn in the seats'
 colors, or `imageGameIcon({ light, dark })` for a light and dark pair of pictures), its seat 2
-choices (`seatTwo`: `'cpu'`, `'person'`, `'nobody'`) and whether 2 Player seats its players side by
-side in a wide window (`sideBySideWhenWide`), the store `reducers` it mounts, its root `Provider`, its `useLoadout(mode)`, its
+choices (`seatTwo`: `'cpu'`, `'person'`, `'nobody'`), whether 2 Player seats its players side by side
+at a computer (`sideBySideAtComputer`) and in a wide window (`sideBySideWhenWide`), the store `reducers` it mounts, its root `Provider`, its `useLoadout(mode)`, its
 `PlayScreen`, its `StatsSections` and `AchievementList`, `resetStats`, and its How to Play `guide`.
 See `src/types.ts` for every field.
 
@@ -144,9 +144,9 @@ What a game can leave out or add, each optional, so a two-seat game sets none of
 
 | Field | |
 | --- | --- |
-| no `seatTwo` (nor `sideBySideWhenWide`) | A game for one player: its loadout has no seat 2 button, every round is solo (`useActiveRound` falls back to `'solo'`), and its How to Play describes a solo round. |
+| no `seatTwo` (nor `sideBySideWhenWide`) | A game for one player: its loadout has no opponent button, every round is solo (`useActiveRound` falls back to `'solo'`), and its How to Play describes a solo round. |
 | no `useLoadout` | Nothing to set up first: Home opens its play screen straight away, after its How to Play the first time, and a link to its loadout plays it. Its rule variants go in its play screen's Settings: `<SettingsDialog>` takes `children`. |
-| no `cpuDifficulty` (in `GameLoadout`) | A CPU with no levels: seat 2's menu offers one plain CPU. |
+| no `cpuDifficulty` (in `GameLoadout`) | A CPU with no levels: player 1's opponent menu offers one plain CPU. |
 | `resumable` | A cold launch drops the player back into its play screen if they left the app there rather than backing out of it. The shell remembers only which game (`lastActiveGame`); the game saves and restores its own board. |
 | `Preview` | Drawn on Home in place of the icon (`GamePreviewProps`: `width`, `height`, the seats' colors, `dark`), in a box of `PREVIEW_ASPECT` (360:200), a frame after Home first paints. While any game has one, Home shows tiles: rows upright, and on a wide screen a grid beside the hero and seat 1's button. A game without one keeps its icon. |
 | no `icon` | Only with a `Preview`, which Home draws in its place. |
@@ -205,10 +205,10 @@ screen right now) and `onBack`/`onSettings`, plus `centerLineY` when the line be
 the window's middle.
 
 - **Where:** the window's top corners; 2 Player face to face, the side edges at the line between the
-  players (the top corners are the far player's end); desktop web (a browser window at least
-  `MATCH_CHIPS_DESKTOP_MIN_WIDTH`, 768, wide), the page's top corners always.
+  players (the top corners are the far player's end); at a computer (`useAtComputer`: the web without
+  a touch-first screen), the page's top corners always.
 - **When:** faded out over `MATCH_CHIPS_FADE_MS` (150) and not pressable while `playing`, back the moment
-  it stops; up all match on desktop web.
+  it stops; up all match at a computer.
 - **Look:** a 24 icon in the theme's full contrast on a translucent chip of the page's color.
 
 ## Peer dependencies

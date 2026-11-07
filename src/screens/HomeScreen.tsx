@@ -23,7 +23,7 @@ import { HOME_GRID_GAP, HOME_LEFT_PANE_PICKER_GAP, HOME_TILE_PADDING, HOME_TOP_B
 // pack as a row in a fixed order, Solitaire's list: each game on its own well, its small app icon
 // (or its preview, GameDefinition.Preview) beside its name and blurb. A tap opens that game's
 // loadout, or its play screen in a game without one, after its How to Play cards the first time it's
-// picked. Seat 2 is chosen in the loadout, from seat 2's own button. A pack with tabs
+// picked. Seat 2 is chosen in the loadout, from player 1's opponent button. A pack with tabs
 // (PackDefinition.homeTabs) shows one tab's games at a time, from a switch over the rows.
 //
 // A cold launch that finds the player left the app inside a resumable game's play screen

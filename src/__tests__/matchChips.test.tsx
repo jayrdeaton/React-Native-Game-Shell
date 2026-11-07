@@ -4,6 +4,8 @@ import { Platform, StyleSheet } from 'react-native'
 import { MatchChips } from '../components/MatchChips'
 
 const mockWindow = { width: 400, height: 800 }
+let mockTouchPrimary = true
+jest.mock('@tastic/core', () => ({ ...jest.requireActual('@tastic/core'), useIsTouchPrimaryDevice: () => mockTouchPrimary }))
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({ __esModule: true, default: () => ({ ...mockWindow, scale: 1, fontScale: 1 }) }))
 jest.mock('react-native-safe-area-context', () => ({ ...jest.requireActual('react-native-safe-area-context'), useSafeAreaInsets: () => ({ top: 40, right: 2, bottom: 30, left: 4 }) }))
 jest.mock('@rific/auto-paper', () => ({ useAutoPaperTheme: () => ({ dark: true }) }))
@@ -21,6 +23,7 @@ function setPlatform(os: 'ios' | 'web') {
 
 beforeEach(() => {
   setPlatform('ios')
+  mockTouchPrimary = true
   mockWindow.width = 400
   mockWindow.height = 800
 })
@@ -63,17 +66,19 @@ describe('MatchChips', () => {
     expect(onSettings).toHaveBeenCalledTimes(1)
   })
 
-  it('stays up in the page corners on desktop web, face to face or not', async () => {
+  it('stays up in the page corners at a computer, face to face or not, in a tall window too', async () => {
     setPlatform('web')
-    mockWindow.width = 1280
+    mockTouchPrimary = false
+    mockWindow.width = 900
+    mockWindow.height = 1000
     await render(<MatchChips playing faceToFace onBack={noop} onSettings={noop} />)
     expect(slot('match-chips-back')).toMatchObject({ top: 48, left: 12, opacity: 1 })
     expect(screen.getByTestId('match-chips-back').props.pointerEvents).toBe('box-none')
   })
 
-  it('treats a narrow browser window as a phone', async () => {
+  it("treats a touch screen's browser as the device, however wide", async () => {
     setPlatform('web')
-    mockWindow.width = 700
+    mockWindow.width = 1280
     await render(<MatchChips playing faceToFace onBack={noop} onSettings={noop} />)
     expect(slot('match-chips-back')).toMatchObject({ top: 400 - 24, opacity: 0 })
   })

@@ -13,8 +13,9 @@ import { useDispatch } from 'react-redux'
 import type { Action, Dispatch } from 'redux'
 
 import { useGameGuide } from '../components/GuideHost'
-import { SeatTwoPanel } from '../components/SeatTwoPanel'
+import { OpponentPicker } from '../components/OpponentPicker'
 import { SettingsDialog } from '../components/SettingsDialog'
+import { useAtComputer } from '../hooks/useAtComputer'
 import { useOpponent } from '../hooks/useOpponent'
 import { useProfiles } from '../hooks/useProfiles'
 import { useSeatColors } from '../hooks/useSeatColors'
@@ -31,13 +32,18 @@ import { humanSeatsFor, type PackGameDefinition, roundModeFor, type Seat, type S
 // already happened at the OS's own pace, not a deliberate reveal.
 const PANEL_SWAP_FADE_MS = 180
 
+// The popover ids a game's seat controls open under (GameLoadout.seatControl).
+const P1_CONTROL_ID = 'p1-control'
+const P2_CONTROL_ID = 'p2-control'
+
 // A game that has a loadout (GameDefinition.useLoadout): the loadout route sends any other straight
 // to its play screen.
 export type LoadoutGame = PackGameDefinition & Required<Pick<PackGameDefinition, 'useLoadout'>>
 
 // Every game's loadout: seat 1 (the player picked on Home), seat 2 (the CPU, a second person, or
-// nobody, from seat 2's own button, or no button in a game for one player), the game's own match
-// options, and Ready. Remounted per game (the route keys it by id), so a game's useLoadout hook only
+// nobody, picked on player 1's opponent button beside their seat button, or no button in a game for
+// one player), the game's own match options, and Ready. A person in seat 2 gets their own seat button
+// (Player 2 or a profile) in their half; only player 1 can hand the seat back to the CPU. Remounted per game (the route keys it by id), so a game's useLoadout hook only
 // ever runs for that one game.
 export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   const pack = usePack()
@@ -57,12 +63,16 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   // face to face otherwise. The OS turns the interface; a portrait-locked phone is always face to face.
   const { orientationMode } = useOrientationState()
 
+  // A computer: the web without a touch-first screen (see GameDefinition.sideBySideAtComputer).
+  const atComputer = useAtComputer()
   // The panel area's own layout lags one fade behind the window above - see useDualZoneLayout's own
-  // comment. 2 Player seats its players the way the game's own board does: face to face (P1 in the
-  // bottom half, P2 in the top) in any window, unless the game seats them side by side in a wide one
-  // (GameDefinition.sideBySideWhenWide), P1 on the left, so each player gets the same half here and
-  // in the match. With one person the panels follow the window.
-  const panelMode = p2IsHuman && !game.sideBySideWhenWide ? 'faceToFace' : orientationMode
+  // comment. 2 Player seats its players the way the game's own match does: face to face (P1 in the
+  // bottom half, P2 in the top) in any window, unless the game seats them side by side at a computer
+  // (GameDefinition.sideBySideAtComputer) or in a wide window (sideBySideWhenWide), P1 on the left,
+  // so each player gets the same half here and in the match. With one person the panels follow the
+  // window.
+  const twoPlayerMode = game.sideBySideAtComputer && atComputer ? 'sideBySide' : game.sideBySideWhenWide ? orientationMode : 'faceToFace'
+  const panelMode = p2IsHuman ? twoPlayerMode : orientationMode
   const { panelLayout, panelFadeStyle } = useDualZoneLayout(panelMode, false, true, false, PANEL_SWAP_FADE_MS)
   // split-screen types the fade as a style for any component (useAnimatedStyle's DefaultStyle). An app
   // whose types widen Text's style (Expo's react-native-web types, which a generated expo-env.d.ts pulls
@@ -75,10 +85,11 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   const { p1Color, p2Color, handleP1ColorChange, handleP2ColorChange } = useSeatColors(p2IsHuman)
   const dispatch = useDispatch<Dispatch<Action>>()
 
-  // A seat's color follows its newly selected profile through the profile-color effect above.
-  // Picking the other seat's profile swaps the two (see @tastic/profile's select).
+  // A seat's color follows its newly selected profile (useSeatColors). Picking the other seat's
+  // profile swaps the two (see @tastic/profile's select): only reachable from seat 1 with one person,
+  // since 2 Player marks each seat's profile taken in the other's menu.
   const handleP1ProfileSelect = useCallback((profile: Profile | null) => selectProfile(1, profile?.id ?? null), [selectProfile])
-  const handleP2ProfileSelect = useCallback((profileId: string | null) => selectProfile(2, profileId), [selectProfile])
+  const handleP2ProfileSelect = useCallback((profile: Profile | null) => selectProfile(2, profile?.id ?? null), [selectProfile])
 
   const [ready, setReady] = useState<Record<Seat, boolean>>({ 1: false, 2: false })
 
@@ -127,6 +138,9 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   const p1Drawn = seatPreview ? seatPreview(p1Color) : p1Color
   const p2Drawn = seatPreview ? seatPreview(p2Color) : p2Color
   const triggerStyle = useMemo(() => (pack.Backdrop ? [styles.pill, { backgroundColor: themeColors.surface }] : undefined), [pack.Backdrop, themeColors.surface])
+  // Ready too: a pill on the surface, filled in the seat's color once ready, over a backdrop, where the
+  // outline in a muted seat color read dim (Solitaire's felt); the outline on a plain screen.
+  const readySurface = pack.Backdrop ? themeColors.surface : undefined
 
   const isPortrait = panelLayout.orientationMode === 'faceToFace'
   // See @tastic/split-screen's needsSharedNeutralZone: whether back/settings/randomize/reset fold
@@ -135,27 +149,25 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
 
   // Where P2's own press-away zone lives on screen - matches panelLayout (what's actually painted
   // right now, mid-fade included). Portrait puts P2's panel in the top half; landscape on the right
-  // (P1 sits on the left). Only in 2 Player - otherwise seat 2 shares seat 1's host (see p2Host below).
+  // (P1 sits on the left). Only in 2 Player: with one person there's no seat 2 button.
   const p2ZoneStyle = p2IsHuman ? (isPortrait ? styles.p2ZoneTop : styles.p2ZoneRight) : null
 
-  // With one human, the one Ready button sits under both panels instead of in each.
-  const showReadyButton = p2IsHuman
   // The seat buttons' menus are placed by the pack where it places them itself (PackDefinition.
   // usePickerAlign), as on Home, but only in the one-human row: 2 Player's halves keep each menu in
   // its own player's half (hud's useZoneClampedAlign, the panels' own). The panels are keyed by layout,
   // so a placement hook never changes under a mounted panel.
   const seatPickerAlign = p2IsHuman ? undefined : pack.usePickerAlign
   const layoutKey = p2IsHuman ? 'zones' : 'row'
-  // P1's panel and the match options share one host - they sit in the same near/bottom zone. With
-  // one human, seat 2's panel joins it too (one person drives both, so two open menus at once would
-  // be clutter). 2 Player gives P2 their own host so two people can pick at once, each press-away
-  // zone closing only its own player's menu.
+  // Player 1's buttons (their seat's, the opponent's and their controls) and the match options share
+  // one host - they sit in the same near/bottom zone, and one person drives them all. 2 Player gives
+  // player 2 their own host so two people can pick at once, each press-away zone closing only its own
+  // player's menu.
   const controlsHost = usePopoverHost()
-  const p2PanelHost = usePopoverHost()
-  const p2Host = p2IsHuman ? p2PanelHost : controlsHost
-  // The one-human Ready button is centered under the whole row, not under either seat button, so an
-  // open seat menu can't fully cover it; it fades out while one is open instead.
-  const anyPlayerPickerOpen = !!(controlsHost.openId?.startsWith('p1-') || controlsHost.openId?.startsWith('p2-'))
+  const p2Host = usePopoverHost()
+  // Player 1's menus: their seat button's, the opponent button's and their controls'. With one
+  // person, player 1's Ready button fades out while one is open (a menu can't fully cover it).
+  const p1PickerOpen = controlsHost.openId?.startsWith('p1-') ?? false
+  const p1ControlOpen = controlsHost.openId === P1_CONTROL_ID
 
   const optionsRow = loadout.options({
     host: controlsHost,
@@ -179,10 +191,29 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
 
   const controlLook = { accentColor: themeColors.tertiary, mutedColor: fgMuted, dark }
   const p1Control = loadout.seatControl(1, controlsHost, { ...controlLook, seatColor: p1Drawn })
-  const p1Panel = <PlayerSetupPanel key={`p1-${layoutKey}`} idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} dark={dark} showReadyButton={showReadyButton} secondPicker={p1Control} secondPickerId={p1Control ? 'p1-control' : undefined} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(PROFILES_HREF)} previewValue={seatPreview} triggerStyle={triggerStyle} useSeatPickerAlign={seatPickerAlign} />
+  // Seat 1's button alone: player 1's controls and Ready sit under the row it shares with the
+  // opponent button, centered under both.
+  const p1Panel = <PlayerSetupPanel key={`p1-${layoutKey}`} idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman dark={dark} showReadyButton={false} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(PROFILES_HREF)} previewValue={seatPreview} triggerStyle={triggerStyle} useSeatPickerAlign={seatPickerAlign} />
+  // Who sits in seat 2, player 1's to pick in every mode. A game for one player (no seatTwo) has none:
+  // seat 1's button stands alone.
+  const opponentPicker = game.seatTwo && <OpponentPicker key={`opponent-${layoutKey}`} idPrefix='p1' host={controlsHost} choices={game.seatTwo} seatTwo={seatTwo} onSeatTwoChange={changeSeatTwo} cpuDifficulty={loadout.cpuDifficulty} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} allowSwapTaken={mode === 'vsCpu'} dark={dark} previewValue={seatPreview} triggerStyle={triggerStyle} usePickerAlign={seatPickerAlign} />
+  const toggleP1Ready = () => setReady((r) => ({ ...r, 1: !r[1] }))
+  const seatOne = (
+    <View style={[styles.seatOne, !p2IsHuman && styles.seatOneAlone, p1PickerOpen && styles.raised]}>
+      <View style={[styles.seatOneButtons, p1PickerOpen && styles.raised]}>
+        <Animated.View style={[styles.playersRow, p1PickerOpen && styles.raised, !p2IsHuman && playersRowFade]}>
+          {p1Panel}
+          {opponentPicker}
+        </Animated.View>
+        {p1Control && <View style={[styles.controlRow, p1ControlOpen && styles.raised]}>{p1Control}</View>}
+      </View>
+      <ReadyButton color={p1Drawn} ready={ready[1]} onToggleReady={toggleP1Ready} surfaceColor={readySurface} dark={dark} style={!p2IsHuman && p1PickerOpen && styles.readyButtonHidden} />
+    </View>
+  )
+  // A person in seat 2: their own seat button (Player 2 or a profile, never the CPU), controls and
+  // Ready, in their half.
   const p2Control = p2IsHuman ? loadout.seatControl(2, p2Host, { ...controlLook, seatColor: p2Drawn }) : undefined
-  // A game for one player (no seatTwo) has no seat 2 button: seat 1's panel stands alone.
-  const p2Panel = game.seatTwo && <SeatTwoPanel key={`p2-${layoutKey}`} idPrefix='p2' host={p2Host} choices={game.seatTwo} seatTwo={seatTwo} onSeatTwoChange={changeSeatTwo} cpuDifficulty={loadout.cpuDifficulty} profiles={profiles} selectedProfileId={lastSelected[2]} onProfileSelect={handleP2ProfileSelect} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} dark={dark} secondPicker={p2Control} secondPickerId={p2Control ? 'p2-control' : undefined} ready={ready[2]} onToggleReady={() => setReady((r) => ({ ...r, 2: !r[2] }))} showReadyButton={showReadyButton} previewValue={seatPreview} triggerStyle={triggerStyle} usePickerAlign={seatPickerAlign} />
+  const p2Panel = p2IsHuman && <PlayerSetupPanel key='p2-zones' idPrefix='p2' host={p2Host} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} colorCaption={pack.colorCaption} isHuman ready={ready[2]} onToggleReady={() => setReady((r) => ({ ...r, 2: !r[2] }))} dark={dark} secondPicker={p2Control} secondPickerId={p2Control ? P2_CONTROL_ID : undefined} profiles={profiles} selectedProfileId={lastSelected[2]} takenProfileId={lastSelected[1]} guestLabel={pack.guestLabel ?? 'P2'} nullLabel={pack.nullLabel} onProfileSelect={handleP2ProfileSelect} previewValue={seatPreview} triggerStyle={triggerStyle} readySurfaceColor={readySurface} />
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -201,23 +232,19 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
           <DualZoneLayout
             panelLayout={panelLayout}
             panelFadeStyle={panelFadeStyle}
-            p1={p1Panel}
+            p1={seatOne}
             p2={p2Panel}
             shared={sharedControls}
             // A zone can't self-elevate above a later sibling zone; these lift whichever zone has a
             // menu open (see DualZoneLayout's p1Elevated/p2Elevated/sharedElevated doc).
-            p1Elevated={controlsHost.openId?.startsWith('p1-') ?? false}
+            p1Elevated={p1PickerOpen}
             p2Elevated={p2Host.openId !== null}
             sharedElevated={optionsPopoverOpen}
           />
         ) : (
           <View style={styles.stackedZone}>
             {sharedControls}
-            <Animated.View style={[styles.playersRow, anyPlayerPickerOpen && styles.playersRowOpen, playersRowFade]}>
-              {p1Panel}
-              {p2Panel}
-            </Animated.View>
-            <ReadyButton color={p1Drawn} ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} style={anyPlayerPickerOpen && styles.readyButtonHidden} />
+            {seatOne}
           </View>
         )}
       </View>
@@ -237,6 +264,12 @@ function halfOf(color: string): string | undefined {
 const styles = StyleSheet.create({
   container: {
     flex: 1
+  },
+  // Player 1's controls, under their row of buttons.
+  controlRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12
   },
   // A real full-bleed box to size the absolutely-positioned children against.
   frame: {
@@ -264,20 +297,36 @@ const styles = StyleSheet.create({
   pill: {
     borderRadius: 999
   },
-  // The one-human row: seat 1's panel and seat 2's button read as one evenly spaced row of buttons,
-  // at PlayerSetupPanel's own pickerRow gap (12).
+  // Seat 1's button and the opponent button read as one evenly spaced row of buttons, at
+  // PlayerSetupPanel's own pickerRow gap (12).
   playersRow: {
     flexDirection: 'row',
     gap: 12
   },
-  playersRowOpen: {
+  // Lifts whichever piece of player 1's has a menu open above its later siblings (each View is its
+  // own stacking context on the web).
+  raised: {
     zIndex: 100
   },
-  // See anyPlayerPickerOpen: opacity 0 (not display:'none') keeps the button's layout space, and
+  // See p1PickerOpen: opacity 0 (not display:'none') keeps the button's layout space, and
   // pointerEvents:'none' keeps the sliver an open menu doesn't cover from being a hidden tap target.
   readyButtonHidden: {
     opacity: 0,
     pointerEvents: 'none'
+  },
+  // Player 1's column: their row of buttons and controls, then Ready, at PlayerSetupPanel's own
+  // rhythm in their half of 2 Player.
+  seatOne: {
+    alignItems: 'center',
+    gap: 12
+  },
+  // With one person, Ready sits as far under the buttons as the match options sit above them.
+  seatOneAlone: {
+    gap: 28
+  },
+  seatOneButtons: {
+    alignItems: 'center',
+    gap: 12
   },
   stackedZone: {
     alignItems: 'center',

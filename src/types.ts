@@ -73,8 +73,8 @@ export interface GameLoadout {
   // A human seat's controls picker (shot style, keys), or undefined when the game has none.
   seatControl: (seat: Seat, host: PopoverHost, look: SeatControlLook) => ReactNode | undefined
   // Seat 2's CPU difficulty, saved per game since each game's CPU plays differently. Left out by a
-  // game with no seat 2 (GameDefinition.seatTwo), or whose CPU has no levels: seat 2's menu then
-  // offers one plain CPU.
+  // game with no seat 2 (GameDefinition.seatTwo), or whose CPU has no levels: player 1's opponent
+  // menu then offers one plain CPU.
   cpuDifficulty?: { value: string; options: MenuOption<string>[]; onChange: (value: string) => void }
 }
 
@@ -146,13 +146,20 @@ export interface GameDefinition {
   // with the preview at their start, and a grid beside the hero on a wide screen. A game without one
   // keeps its icon there. What it draws is the game's own.
   Preview?: ComponentType<GamePreviewProps>
-  // Seat 2's choices in this game, in menu order. 'nobody' only where the game has a solo mode.
-  // Left out by a game for one player only: its loadout has no seat 2 button and every round is solo.
+  // Seat 2's choices in this game, in the order player 1's opponent menu lists them ('person' is its
+  // Player row). 'nobody' only where the game has a solo mode. Left out by a game for one player only:
+  // its loadout has no opponent button and every round is solo.
   seatTwo?: readonly SeatTwo[]
   // The 2 Player loadout seats its players side by side (P1 on the left) in a window wider than tall,
   // to match a game whose board does the same there. Unset, they sit face to face in any window (P1 at
   // the bottom). Only read in 2 Player, so a game without 'person' among its seatTwo choices leaves it out.
   sideBySideWhenWide?: boolean
+  // The 2 Player loadout seats its players side by side (P1 on the left) at a computer, whatever the
+  // window's shape: two people at one keyboard sit side by side, where the game's match seats them the
+  // same way. A computer is the web without a touch-first screen (@tastic/core's
+  // useIsTouchPrimaryDevice). On a phone or
+  // tablet, natively or in its browser, sideBySideWhenWide decides as before. Only read in 2 Player.
+  sideBySideAtComputer?: boolean
   // The store keys this game mounts (settings, achievements, guide), merged into the pack's store.
   reducers: Record<string, Reducer>
   // Mounted at the app root for the game's lifetime (its stats and achievements context). Left out by

@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
+import { Platform } from 'react-native'
 
 import { opponentActions } from '../redux/opponentSlice'
 import { type LoadoutGame, LoadoutScreen } from '../screens/LoadoutScreen'
@@ -7,13 +8,15 @@ import { shellWrapper, standInGame, standInPack, standInStore } from '../testUti
 import type { SeatTwo } from '../types'
 
 // How the loadout seats its panels (@tastic/core 0.15's window-shape rule): 2 Player face to face in
-// any window unless the game seats players side by side in a wide one (sideBySideWhenWide), and one
-// person's row following the window. The real LoadoutScreen; the window is a stand-in, and
+// any window unless the game seats players side by side at a computer (sideBySideAtComputer) or in a
+// wide window (sideBySideWhenWide), and one person's row following the window. The real
+// LoadoutScreen; the window, the platform and core's touch-first reading are stand-ins, and
 // useDualZoneLayout records the seat mode it's handed.
 
 const PORTRAIT = { width: 402, height: 874 }
 const LANDSCAPE = { width: 1376, height: 1032 }
 let mockWindow = PORTRAIT
+let mockTouchPrimary = true
 const mockDualZone = jest.fn()
 
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({ __esModule: true, default: () => ({ ...mockWindow, scale: 2, fontScale: 1 }) }))
@@ -44,7 +47,8 @@ jest.mock('@tastic/split-screen', () => ({
     </>
   )
 }))
-jest.mock('../components/SeatTwoPanel', () => ({ SeatTwoPanel: () => null }))
+jest.mock('../components/OpponentPicker', () => ({ OpponentPicker: () => null }))
+jest.mock('@tastic/core', () => ({ ...jest.requireActual('@tastic/core'), useIsTouchPrimaryDevice: () => mockTouchPrimary }))
 
 async function seatModeFor(game: LoadoutGame, seatTwo: SeatTwo, window: typeof PORTRAIT) {
   mockWindow = window
@@ -60,8 +64,36 @@ describe("the loadout's seats", () => {
   const faceToFaceGame = standInGame('tag') as LoadoutGame
   const sideBySideGame = standInGame('snake', { sideBySideWhenWide: true }) as LoadoutGame
 
+  const atComputerGame = standInGame('lightcycles', { sideBySideAtComputer: true }) as LoadoutGame
+
   afterEach(() => {
     mockWindow = PORTRAIT
+    mockTouchPrimary = true
+    jest.restoreAllMocks()
+  })
+
+  const onWeb = (touchPrimary: boolean) => {
+    jest.replaceProperty(Platform, 'OS', 'web')
+    mockTouchPrimary = touchPrimary
+  }
+
+  it('sits two players side by side at a computer, in a tall window too, where the game asks', async () => {
+    onWeb(false)
+    expect(await seatModeFor(atComputerGame, 'person', PORTRAIT)).toEqual({ orientationMode: 'sideBySide', p1OnRight: false, resolved: true, upsideDown: false })
+    expect((await seatModeFor(atComputerGame, 'person', LANDSCAPE)).orientationMode).toBe('sideBySide')
+    // A game that doesn't ask keeps its own rule at a computer.
+    expect((await seatModeFor(faceToFaceGame, 'person', LANDSCAPE)).orientationMode).toBe('faceToFace')
+    expect((await seatModeFor(sideBySideGame, 'person', PORTRAIT)).orientationMode).toBe('faceToFace')
+  })
+
+  it('keeps them face to face on a touch screen, in its browser or on the device, in any window', async () => {
+    onWeb(true)
+    expect((await seatModeFor(atComputerGame, 'person', LANDSCAPE)).orientationMode).toBe('faceToFace')
+
+    jest.restoreAllMocks()
+    mockTouchPrimary = true
+    expect((await seatModeFor(atComputerGame, 'person', LANDSCAPE)).orientationMode).toBe('faceToFace')
+    expect((await seatModeFor(atComputerGame, 'person', PORTRAIT)).orientationMode).toBe('faceToFace')
   })
 
   it('sits two players face to face in a portrait window, whichever the game', async () => {

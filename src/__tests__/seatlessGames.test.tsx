@@ -9,8 +9,8 @@ import { type LoadoutGame, LoadoutScreen } from '../screens/LoadoutScreen'
 import { shellWrapper, STAND_IN_LOADOUT, standInGame, standInPack, standInStore } from '../testUtils/pack'
 import { type GameGuide, roundModeFor, type SeatTwo, seatTwoFor } from '../types'
 
-// A game for one player (no GameDefinition.seatTwo): no seat 2 button in its loadout, and every round
-// solo. The loadout renders for real, with seat 2's real button; what needs a native runtime or
+// A game for one player (no GameDefinition.seatTwo): no opponent button in its loadout, and every round
+// solo. The loadout renders for real, with player 1's real opponent button; what needs a native runtime or
 // another provider is replaced: the insets, expo-router (its router records each push, a focus effect
 // runs as an effect), the How to Play host and the Settings dialog, the profiles and seat colors, and
 // hud's seat 1 panel and Ready button, and @tastic/profile's menu button, as recording stand-ins.
@@ -135,12 +135,12 @@ describe('the loadout', () => {
     return store
   }
 
-  it('has no seat 2 button in a game with no seat 2, and Ready starts a solo round', async () => {
+  it('has no opponent button in a game with no seat 2, and Ready starts a solo round', async () => {
     const game = standInGame('freecell', { seatTwo: undefined, useLoadout: () => ({ ...STAND_IN_LOADOUT, cpuDifficulty: undefined }) }) as LoadoutGame
     const store = await renderLoadout(game)
 
     expect(screen.getByTestId('seat-1')).toBeTruthy()
-    expect(screen.queryByTestId('p2-seat')).toBeNull()
+    expect(screen.queryByTestId('p1-opponent')).toBeNull()
 
     await act(async () => fireEvent.press(screen.getByTestId('ready')))
 
@@ -148,17 +148,17 @@ describe('the loadout', () => {
     expect(router.push).toHaveBeenCalledWith({ pathname: '/play/[game]', params: { game: 'freecell' } })
   })
 
-  it('keeps seat 2 in a game with one', async () => {
+  it('keeps the opponent button in a game with seat 2', async () => {
     await renderLoadout(standInGame('pong') as LoadoutGame)
 
-    expect(screen.getByTestId('p2-seat')).toBeTruthy()
+    expect(screen.getByTestId('p1-opponent')).toBeTruthy()
   })
 
   it("offers one plain CPU for seat 2 when the game's CPU has no levels", async () => {
     const game = standInGame('war', { seatTwo: ['cpu', 'person'], useLoadout: () => ({ ...STAND_IN_LOADOUT, cpuDifficulty: undefined }) }) as LoadoutGame
     await renderLoadout(game)
 
-    const seatTwo = mockOptionPicker.mock.calls.map(([props]) => props).find((props) => props.id === 'p2-seat')
+    const seatTwo = mockOptionPicker.mock.calls.map(([props]) => props).find((props) => props.id === 'p1-opponent')
     expect(seatTwo.options[0]).toEqual({ value: 'cpu:', label: 'CPU', icon: 'robot' })
     expect(seatTwo.value).toBe('cpu:')
   })

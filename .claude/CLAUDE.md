@@ -98,7 +98,7 @@ step 3's additions.
 | `navigation.ts` | `safeBack`, `@rific/core`'s with expo-router's `router` injected at import. |
 | `routes.ts` | The shell's own hrefs (`playHref`, `loadoutHref`, `STATS_HREF`, `PROFILES_HREF`), as plain `Href`s. Internal. |
 | `splashGate.ts` | The shell's three splash gates: `theme`, `fonts`, `profiles`. Internal. |
-| `components/` | `Providers` (Redux, PersistGate, Edge Guard, feedback-press with the UI sounds, Keep Awake), `Theme` (auto-paper's Provider over the `theme` key), `Fonts`, `GuideHost`/`useGameGuide` (each game's How to Play), `SettingsDialog`, `SeatTwoPanel`, `UpdateDialog`, `imageGameIcon`. |
+| `components/` | `Providers` (Redux, PersistGate, Edge Guard, feedback-press with the UI sounds, Keep Awake), `Theme` (auto-paper's Provider over the `theme` key), `Fonts`, `GuideHost`/`useGameGuide` (each game's How to Play), `SettingsDialog`, `OpponentPicker`, `UpdateDialog`, `imageGameIcon`. |
 | `hooks/` | `useActiveRound`, `useAppSettings`, `useOpponent`, `useProfiles`/`ProfilesProvider`, `useSeatColors`, `useLastActiveGame`/`LastActiveGameProvider` (the resume, internal), `useFrozenWhileHidden`. |
 | `redux/` | `createPackStore`, `createShellReducers`/`ShellState`, and the shell's slices (`appSettings`, `liveplay`, `opponent`, `profileSelection`, `seatColors`, and `lastActiveGame` in a pack with a resumable game), `createGameGuideSlice`, `onProfileRemoved`/`forgetProfileAchievements`. |
 | `screens/` | `HomeScreen` (and `homeLayout.ts`, its tiles' geometry), `LoadoutScreen` (with `LoadoutRoute` and `PlayRoute` in `GameRoute.tsx`), `ProfilesRoute`, `StatsScreen`. |
@@ -292,10 +292,16 @@ against hud's packed tarball, then released on hud 0.27.1 from npm (the peer flo
   Player's shared band draw in `foreground`, and the options row and seat controls get half of it as
   their `mutedColor` (`halfOf`, through auto-paper's `getRgb`; a color it can't read keeps the old
   muted black or white). Both seat buttons sit on the theme's surface as Home's does (`triggerStyle`,
-  a 999 radius pill).
+  a 999 radius pill). So does every Ready button since 2026-11-07 (Jay: the outline and mono label
+  in a muted seat color didn't read on Solitaire's felt): `readySurface` is the theme's surface over a
+  backdrop, handed to player 1's `ReadyButton` as `surfaceColor` (with `dark`) and to a person in seat
+  2's `PlayerSetupPanel` as `readySurfaceColor`; Ready then fills with the drawn seat color. Needs hud
+  0.28.0 (`surfaceColor`/`readySurfaceColor`), the peer floor since 0.7.0; against 0.27.1 `tsc`
+  fails on exactly those two props. Pinned by `loadoutOptions`' "keep 2 Player's Ready buttons the
+  outline by default" and "draw every Ready button as a pill" cases.
 - **`guestLabel`, `nullLabel`:** seat 1's panel, as Home's button (`'P1'` unset).
 - **`previewColor`:** seat 1's panel gets it as `previewValue` (its chip, Color row, swatches and Ready
-  button; the saved color stays the Color row's value), seat 2's `SeatTwoPanel` the same (its chip, Color
+  button; the saved color stays the Color row's value), seat 2's `SeatTwoPanel` (`OpponentPicker` since 0.7.0) the same (its chip, Color
   row, each profile row, its Ready button), and the one-human Ready button and each seat control's
   `seatColor` are drawn with it. Home doesn't have the last two; drawing them raw beside a muted chip
   would have been the one raw seat color on the screen.
@@ -408,12 +414,62 @@ stay up in the page's corners. The look is Box Hockey's (Jay's reference): the t
 icon on a 55% translucent chip of the page color. The game decides what `playing` and `faceToFace` mean
 for it; the shell owns the where, when and look. Tested in `matchChips.test.tsx`.
 
+## Player 1 picks seat 2 (0.7.0, 2026-11-07)
+
+Jay (DuelTastic's `TODO.md`, playtest item 5, asked for again 2026-11-07): player 1 decides who sits in
+seat 2, and a person there only picks who they are. Until now seat 2 was one button on seat 2's side
+(`SeatTwoPanel`) listing the CPU's levels, Nobody, Player 2 and the profiles together, so once a person
+sat there, the way back to the CPU was on their side of the table.
+
+- **Player 1's opponent button** (`src/components/OpponentPicker.tsx`, an `OptionPicker` that opens
+  under `p1-opponent` on player 1's host): beside seat 1's button in every mode, listing the CPU's
+  levels (or one plain CPU row), Solo where the game has a solo mode (seat 2 empty, the saved
+  `'nobody'`; it said Nobody until now), and Player, each kind of choice behind a divider (Jay; the
+  options' `dividerBefore`, new in `@tastic/profile` 0.18.0). Never a profile.
+  Picking a CPU level sets it and seat 2 back to the CPU; picking Player makes the round 2 Player. A
+  game with no `seatTwo` has no opponent button.
+- **The CPU's color** is the opponent button's Color row while the CPU is in seat 2 (Jay's pick), as it
+  was seat 2's; a person's is on their own button, and Solo has none.
+- **A person in seat 2** gets hud's `PlayerSetupPanel` in their half (idPrefix `p2`, their own host):
+  Player 2 or a profile (`guestLabel` the pack's `guestLabel` or `'P2'`, `nullLabel` the pack's), never
+  the CPU and no Manage, seat 1's profile marked taken as seat 1's menu marks seat 2's; their controls
+  and Ready under it.
+- **Player 1's column** (`seatOne` in `LoadoutScreen.tsx`): their seat button and the opponent button
+  side by side (Jay's pick for 2 Player), their controls centered under both, then Ready. The same
+  column in both layouts: in 2 Player it's player 1's half; with one person it sits under the options
+  row, its Ready 28 below the buttons and hidden while one of player 1's menus is open, as before. Seat
+  1's `PlayerSetupPanel` is the seat button alone now (`showReadyButton={false}`, no `secondPicker`).
+- With one person, everything is on player 1's host as before; seat 2 has no button and no host of its
+  own (`p2Host` is only used in 2 Player).
+- **At a computer, side by side** (Jay, the same day: "It should only be face to face if on mobile or
+  web-mobile"): a new `useAtComputer` hook, exported (the web without a touch-first screen: @tastic/core's
+  `useIsTouchPrimaryDevice`), and a new
+  `GameDefinition.sideBySideAtComputer`: the 2 Player loadout sits side by side at a computer whatever the
+  window's shape, and `sideBySideWhenWide` decides on a phone or tablet as before. Opt-in per game,
+  since the loadout has to agree with the game's own match: DuelTastic, PuckTastic and CardTastic set it on
+  every two-player game, each with its own match seated the same way at a computer (their CLAUDE.md files). `MatchChips` reads
+  `useAtComputer` too, in place of a browser window 768 wide (`MATCH_CHIPS_DESKTOP_MIN_WIDTH` is gone; no
+  pack read it), so in a tablet's browser the chips now fade during play and sit between face-to-face
+  players as on the device. Tests: `useAtComputer`, `loadoutSeats` (side by side at a computer in a tall
+  window too, face to face on a touch screen in its browser or on the device, a game that doesn't ask
+  keeping its own rule) and `matchChips` (up in the corners at a computer in a tall window, a touch
+  screen's browser treated as the device however wide).
+- **Needs `@tastic/profile` 0.18.0** for `dividerBefore`, and **`@tastic/core` 0.16.0**, whose
+  `useIsTouchPrimaryDevice` no longer counts a thin browser window as a phone's (Jay: a thin desktop
+  window still sat face to face, one player upside down), both as the peer floor and dev dependency.
+- **Nothing saved changes:** `opponent.seatTwo` and `profileSelection` as before. Picking Player puts
+  back whoever seat 2 last had (a profile or the guest).
+- Tests: `loadoutOptions`' "who sits in seat 2" (the opponent button's rows in vs CPU and 2 Player on
+  player 1's host, Solo in a solo game and the dividers, handing the seat to a person and back to the CPU at a level,
+  seat 2's own button with the profiles and no CPU in 2 Player and none with the CPU, the CPU's color
+  only on the opponent button), and the earlier cases moved from `p2-seat` to `p1-opponent`.
+
 ## Public API
 
 `src/index.ts`, the one entry (`"."`). Served as source under the `react-native` and `browser`
 conditions (Metro, Expo's web build, and an app's `tsc`, whose preset turns the `react-native`
 condition on, so an app type-checks this source with its own settings), and as `dist/` for the rest.
-Internal pieces (`Providers`, `Theme`, `Fonts`, `GuideHost`, `UpdateDialog`, `SeatTwoPanel`,
+Internal pieces (`Providers`, `Theme`, `Fonts`, `GuideHost`, `UpdateDialog`, `OpponentPicker`,
 `LoadoutScreen`, the splash gates, `LastActiveGameProvider`/`useLastActiveGame`, `homeLayout`'s
 geometry but `PREVIEW_ASPECT`) aren't exported: `RootLayout` and the routes mount them. The slices'
 default-exported reducers are exported by name (`appSettingsReducer`, `liveplayReducer`,
@@ -421,7 +477,7 @@ default-exported reducers are exported by name (`appSettingsReducer`, `liveplayR
 `PackStatsSectionsProps` and `PREVIEW_ASPECT` (the shape a game's `Preview` draws in). 0.2.0 added
 `GUEST_PLAYER_ID` and the types `GuidelessGameDefinition`, `PackGameDefinition`, `PackGuide`,
 `GameRulesProps`, `StackScreenOptions`, `FeedbackSounds`, `PackStatsTab`, `PackStatsReset` and
-`PickerAlign`. 0.4.0 added the type `HomeTab` (Home's tabs). 0.6.0 added `MatchChips`, its props type, `MATCH_CHIPS_DESKTOP_MIN_WIDTH` and `MATCH_CHIPS_FADE_MS`.
+`PickerAlign`. 0.4.0 added the type `HomeTab` (Home's tabs). 0.6.0 added `MatchChips`, its props type, `MATCH_CHIPS_DESKTOP_MIN_WIDTH` and `MATCH_CHIPS_FADE_MS`. 0.7.0 added `useAtComputer` and removed `MATCH_CHIPS_DESKTOP_MIN_WIDTH`.
 
 ## Peer Dependencies
 
@@ -456,7 +512,7 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   `migrate`), `profiles` (a stand-in game's per-profile data), `playerSettings`, `statusBar` (no
   source file mounts a `StatusBar`, and `Theme` turns auto-paper's off), and step 3's:
   `seatlessGames` (`seatTwoFor`, `useActiveRound`'s solo fallback, a solo How to Play, the loadout
-  with no seat 2 button committing a solo round, one plain CPU row), `homeScreen` (a game with no
+  with no opponent button committing a solo round, one plain CPU row), `homeScreen` (a game with no
   loadout opened straight to play and its loadout link redirected; a resume used once, kept while its
   play screen is up and cleared on back, kept when it unmounts with the app not active, a second
   Home not resuming, a stale or non-resumable id

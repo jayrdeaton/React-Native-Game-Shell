@@ -14,8 +14,10 @@ import type { GameLoadout, LoadoutOptionsProps, PackDefinition, SeatControlLook,
 // surface over the backdrop, and the seat buttons' menus placed by the pack in the one-human row. A
 // pack without them keeps the loadout as it was. The real loadout over the real store and pack; the
 // insets, expo-router, How to Play host, Settings, profiles and seat colors are stand-ins, and so are
-// hud's seat 1 panel, Ready button, corner buttons and shared band, @tastic/profile's menu button
-// (seat 2's) and split-screen's zones, which record what they're handed.
+// hud's seat panels, Ready button, corner buttons and shared band, @tastic/profile's menu button
+// (player 1's opponent button) and split-screen's zones, which record what they're handed. Also who
+// picks seat 2 (Jay, 2026-11-07): player 1, from the CPU's levels and Player, never a profile, and a
+// person there gets a button of their own with the profiles and never the CPU.
 
 jest.mock('react-native-safe-area-context', () => ({ ...jest.requireActual('react-native-safe-area-context'), useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) }))
 jest.mock('expo-router', () => {
@@ -43,8 +45,8 @@ jest.mock('@tastic/hud/lobby', () => {
     ...jest.requireActual('@tastic/hud/lobby'),
     PlayerSetupPanel: (props: Record<string, unknown>) => {
       mockPanel(props)
-      useReactEffect(() => mockPanelMounts(), [])
-      return <RNView testID='seat-1' />
+      useReactEffect(() => mockPanelMounts(props.idPrefix), [])
+      return <RNView testID={props.idPrefix === 'p1' ? 'seat-1' : 'seat-2'} />
     },
     ReadyButton: (props: { color: string }) => {
       mockReady(props)
@@ -91,29 +93,114 @@ jest.mock('@tastic/profile', () => {
   }
 })
 
-const lastPanel = () => mockPanel.mock.lastCall![0]
-const lastSeatTwo = () =>
+// The last props each seat's panel was handed (seat 2's only exists for a person), and the opponent
+// button's.
+const panelFor = (idPrefix: 'p1' | 'p2') =>
+  mockPanel.mock.calls
+    .map(([props]) => props)
+    .filter((props) => props.idPrefix === idPrefix)
+    .pop()
+const lastPanel = () => panelFor('p1')
+const lastOpponent = () =>
   mockOptionPicker.mock.calls
     .map(([props]) => props)
-    .filter((props) => props.id === 'p2-seat')
+    .filter((props) => props.id === 'p1-opponent')
     .pop()
+const panelMounts = (idPrefix: 'p1' | 'p2') => mockPanelMounts.mock.calls.filter(([prefix]) => prefix === idPrefix).length
 
-// A loadout that records what its options row and seat controls are handed.
+// A loadout that records what its options row, seat controls and CPU level are handed.
 const optionsArgs = jest.fn((_args: LoadoutOptionsProps) => null)
 const controlLooks = jest.fn((_seat: number, _look: SeatControlLook) => undefined)
-const recordingLoadout: GameLoadout = { ...STAND_IN_LOADOUT, options: optionsArgs, seatControl: (seat, _host, look) => controlLooks(seat, look) }
+const cpuLevel = jest.fn()
+const recordingLoadout: GameLoadout = {
+  ...STAND_IN_LOADOUT,
+  options: optionsArgs,
+  seatControl: (seat, _host, look) => controlLooks(seat, look),
+  cpuDifficulty: {
+    value: 'normal',
+    options: [
+      { value: 'easy', label: 'Easy', icon: 'speedometer-slow' },
+      { value: 'normal', label: 'Normal', icon: 'speedometer-medium' }
+    ],
+    onChange: cpuLevel
+  }
+}
 const ratslap = standInGame('ratslap', { seatTwo: ['cpu', 'person'], useLoadout: () => recordingLoadout }) as LoadoutGame
 
-async function renderLoadout(overrides: Partial<PackDefinition> = {}, seatTwo: SeatTwo = 'cpu') {
-  const pack = standInPack([ratslap], overrides)
+async function renderLoadout(overrides: Partial<PackDefinition> = {}, seatTwo: SeatTwo = 'cpu', game: LoadoutGame = ratslap) {
+  const pack = standInPack([game], overrides)
   const store = standInStore(pack)
   store.dispatch(opponentActions.setSeatTwo(seatTwo))
-  const view = await render(<LoadoutScreen game={ratslap} />, { wrapper: shellWrapper(pack, store) as (props: { children: ReactNode }) => ReactNode })
+  const view = await render(<LoadoutScreen game={game} />, { wrapper: shellWrapper(pack, store) as (props: { children: ReactNode }) => ReactNode })
   return { ...view, store }
 }
 
 beforeEach(() => {
-  for (const mock of [mockPanel, mockPanelMounts, mockReady, mockCorner, mockBand, mockOptionPicker, optionsArgs, controlLooks]) mock.mockClear()
+  for (const mock of [mockPanel, mockPanelMounts, mockReady, mockCorner, mockBand, mockOptionPicker, optionsArgs, controlLooks, cpuLevel]) mock.mockClear()
+})
+
+describe('who sits in seat 2', () => {
+  const CPU_LEVELS = [
+    { value: 'cpu:easy', label: 'Easy', icon: 'speedometer-slow' },
+    { value: 'cpu:normal', label: 'Normal', icon: 'speedometer-medium' }
+  ]
+  const PLAYER = { value: 'person', label: 'Player', icon: 'account-outline', dividerBefore: true }
+
+  it("is player 1's to pick in every mode, from the CPU's levels and Player, never a profile", async () => {
+    await renderLoadout({}, 'cpu')
+    expect(lastOpponent().options).toEqual([...CPU_LEVELS, PLAYER])
+    expect(lastOpponent().value).toBe('cpu:normal')
+    expect(lastOpponent().host).toBe(lastPanel().host)
+
+    await renderLoadout({}, 'person')
+    expect(lastOpponent().options).toEqual([...CPU_LEVELS, PLAYER])
+    expect(lastOpponent().value).toBe('person')
+    expect(lastOpponent().host).toBe(lastPanel().host)
+  })
+
+  it('offers Solo there too in a game with a solo mode, each kind of choice behind a divider', async () => {
+    const snake = standInGame('snake', { seatTwo: ['cpu', 'person', 'nobody'], useLoadout: () => recordingLoadout }) as LoadoutGame
+    await renderLoadout({}, 'nobody', snake)
+
+    expect(lastOpponent().options).toEqual([...CPU_LEVELS, { value: 'nobody', label: 'Solo', icon: 'account-off-outline', dividerBefore: true }, PLAYER])
+    expect(lastOpponent().value).toBe('nobody')
+  })
+
+  it("hands seat 2 to a person and takes it back for the CPU at a level, from player 1's button", async () => {
+    const { store } = await renderLoadout({}, 'cpu')
+
+    await act(async () => lastOpponent().onChange('person'))
+    expect(store.getState().opponent.seatTwo).toBe('person')
+    expect(panelFor('p2')).toBeDefined()
+
+    await act(async () => lastOpponent().onChange('cpu:easy'))
+    expect(store.getState().opponent.seatTwo).toBe('cpu')
+    expect(cpuLevel).toHaveBeenLastCalledWith('easy')
+  })
+
+  it('gives a person in seat 2 their own button in their half, with the profiles and never the CPU', async () => {
+    await renderLoadout({}, 'person')
+
+    expect(panelFor('p2')).toEqual(expect.objectContaining({ isHuman: true, profiles: [ADA], selectedProfileId: null, takenProfileId: null, guestLabel: 'P2', color: '#f44336', takenColor: '#2196f3' }))
+    expect(panelFor('p2').cpuDifficulty).toBeUndefined()
+    expect(panelFor('p2').onManageProfiles).toBeUndefined()
+    expect(panelFor('p2').host).not.toBe(lastPanel().host)
+  })
+
+  it('gives seat 2 no button of its own with the CPU there', async () => {
+    await renderLoadout({}, 'cpu')
+
+    expect(panelFor('p2')).toBeUndefined()
+  })
+
+  it("carries the CPU's color on player 1's button, and a person's on their own", async () => {
+    await renderLoadout({}, 'cpu')
+    expect(lastOpponent().colorSection).toEqual(expect.objectContaining({ value: '#f44336', takenValue: '#2196f3', allowSwapTaken: true }))
+
+    await renderLoadout({}, 'person')
+    expect(lastOpponent().colorSection).toBeUndefined()
+    expect(panelFor('p2')).toEqual(expect.objectContaining({ color: '#f44336', onColorChange: expect.any(Function) }))
+  })
 })
 
 describe("a pack's Backdrop and foreground", () => {
@@ -126,7 +213,15 @@ describe("a pack's Backdrop and foreground", () => {
     expect(mockCorner).toHaveBeenLastCalledWith('#000000')
     expect(optionsArgs.mock.lastCall![0].mutedColor).toBe('rgba(0,0,0,0.5)')
     expect(lastPanel().triggerStyle).toBeUndefined()
-    expect(lastSeatTwo().triggerStyle).toBeUndefined()
+    expect(lastOpponent().triggerStyle).toBeUndefined()
+    expect(mockReady.mock.lastCall![0].surfaceColor).toBeUndefined()
+  })
+
+  it("keep 2 Player's Ready buttons the outline by default", async () => {
+    await renderLoadout({}, 'person')
+
+    expect(mockReady.mock.lastCall![0].surfaceColor).toBeUndefined()
+    expect(panelFor('p2').readySurfaceColor).toBeUndefined()
   })
 
   it('draw the loadout transparent over the backdrop, in the foreground and half of it, with the seat buttons on a surface', async () => {
@@ -138,7 +233,15 @@ describe("a pack's Backdrop and foreground", () => {
     expect(controlLooks.mock.lastCall![1].mutedColor).toBe('rgba(245,241,230,0.5)')
     const pill = expect.objectContaining({ borderRadius: 999, backgroundColor: expect.any(String) })
     expect(StyleSheet.flatten(lastPanel().triggerStyle)).toEqual(pill)
-    expect(StyleSheet.flatten(lastSeatTwo().triggerStyle)).toEqual(pill)
+    expect(StyleSheet.flatten(lastOpponent().triggerStyle)).toEqual(pill)
+  })
+
+  it("draw every Ready button as a pill on the seat buttons' surface, labelled for the mode", async () => {
+    await renderLoadout({ Backdrop: () => null }, 'person')
+
+    const surface = StyleSheet.flatten(lastPanel().triggerStyle).backgroundColor
+    expect(mockReady.mock.lastCall![0]).toEqual(expect.objectContaining({ surfaceColor: surface, dark: expect.any(Boolean) }))
+    expect(panelFor('p2').readySurfaceColor).toBe(surface)
   })
 
   it("draw 2 Player's shared band in the foreground too", async () => {
@@ -166,26 +269,27 @@ describe("the seats' colors", () => {
 
     expect(lastPanel().color).toBe('#2196f3')
     expect(lastPanel().previewValue('#ff0000')).toBe('#ff0000/light')
-    expect(lastSeatTwo().color).toBe('#f44336/light')
-    expect(lastSeatTwo().colorSection.value).toBe('#f44336')
-    expect(lastSeatTwo().colorSection.previewValue('#ff0000')).toBe('#ff0000/light')
+    expect(lastOpponent().color).toBe('#f44336/light')
+    expect(lastOpponent().colorSection.value).toBe('#f44336')
+    expect(lastOpponent().colorSection.previewValue('#ff0000')).toBe('#ff0000/light')
     expect(mockReady.mock.lastCall![0].color).toBe('#2196f3/light')
     expect(controlLooks).toHaveBeenLastCalledWith(1, expect.objectContaining({ seatColor: '#2196f3/light' }))
   })
 
-  it("draw each profile in seat 2's menu through it too", async () => {
-    await renderLoadout({ previewColor })
+  it("draw a person's own seat 2 button through it too", async () => {
+    await renderLoadout({ previewColor }, 'person')
 
-    expect(lastSeatTwo().options).toContainEqual(expect.objectContaining({ label: 'Ada', color: '#00ff00/light' }))
+    expect(panelFor('p2').color).toBe('#f44336')
+    expect(panelFor('p2').previewValue('#ff0000')).toBe('#ff0000/light')
+    expect(lastOpponent().color).toBe('#f44336/light')
   })
 
   it('draw raw, with no preview, in a pack without one', async () => {
     await renderLoadout()
 
     expect(lastPanel().previewValue).toBeUndefined()
-    expect(lastSeatTwo().color).toBe('#f44336')
-    expect(lastSeatTwo().colorSection.previewValue).toBeUndefined()
-    expect(lastSeatTwo().options).toContainEqual(expect.objectContaining({ label: 'Ada', color: '#00ff00' }))
+    expect(lastOpponent().color).toBe('#f44336')
+    expect(lastOpponent().colorSection.previewValue).toBeUndefined()
     expect(mockReady.mock.lastCall![0].color).toBe('#2196f3')
   })
 })
@@ -205,10 +309,10 @@ describe("the seat buttons' menu placement", () => {
     await renderLoadout({ usePickerAlign })
 
     expect(lastPanel().useSeatPickerAlign).toBe(usePickerAlign)
-    expect(lastSeatTwo().alignOverride.verticalAlign).toBe('below')
+    expect(lastOpponent().alignOverride.verticalAlign).toBe('below')
     const [open, width, height] = usePickerAlign.mock.lastCall!
     expect(open).toBe(false)
-    expect(lastSeatTwo().alignOverride.maxHeight).toBe(width + height)
+    expect(lastOpponent().alignOverride.maxHeight).toBe(width + height)
   })
 
   it("keeps each menu in its own player's half in 2 Player", async () => {
@@ -221,10 +325,10 @@ describe("the seat buttons' menu placement", () => {
 
   it("remounts seat 1's panel when the layout changes, so its placement hook never changes under it", async () => {
     const { store } = await renderLoadout({ usePickerAlign: jest.fn(placement) })
-    expect(mockPanelMounts).toHaveBeenCalledTimes(1)
+    expect(panelMounts('p1')).toBe(1)
 
     await act(async () => store.dispatch(opponentActions.setSeatTwo('person')))
     expect(lastPanel().useSeatPickerAlign).toBeUndefined()
-    expect(mockPanelMounts).toHaveBeenCalledTimes(2)
+    expect(panelMounts('p1')).toBe(2)
   })
 })
