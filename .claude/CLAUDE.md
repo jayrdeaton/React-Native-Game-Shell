@@ -139,9 +139,10 @@ them); nothing here has run in a browser or on a device.
    `SettingsDialog` takes `children` (Solitaire's `GameChrome` hands its `settingsContent` the same
    way). `LoadoutScreen` takes a `LoadoutGame` (a game with `useLoadout`), which `LoadoutRoute`
    narrows to.
-3. **Settings for the whole pack** (`PackDefinition.SettingsSections` and `reducers`). Every
-   `SettingsDialog` hands `BaseSettingsDialog` a play screen's `children` and then the pack's
-   `SettingsSections` (Solitaire's order: the game's own rows above the app's). `createPackStore`
+3. **Settings for the whole pack** (`PackDefinition.SettingsSections`, `useSettingsRules` and
+   `reducers`). Every `SettingsDialog` hands `BaseSettingsDialog` the pack's `useSettingsRules()`
+   as `leading` (drawn first, above hud's own rows; null where there's nothing to put first), then a
+   play screen's `children` and the pack's `SettingsSections` under hud's rows. `createPackStore`
    mounts the pack's `reducers` between the shell's keys and the games' (never a key either uses:
    a collision silently replaces it, as between games).
 4. **Stats across games** (`PackDefinition.StatsSections`, `PackStatsSectionsProps`). Drawn first on
@@ -569,3 +570,7 @@ Enforced by the shared `@infinitetoken/eslint-config/react-native` preset (a bar
 `eslint.config.cjs`) and its Prettier config (`package.json`'s `"prettier"` field): single quotes,
 no semicolons, no trailing commas, print width 1000. Comments say why, in the apps' voice; no em
 dashes anywhere (Jay).
+
+## The game's rules lead its Settings sheet (2026-11-10)
+
+Jay, in Solitaire (CardTastic): a game's rules, drawn at the top of the pack's `SettingsSections`, still sat under every one of hud's own rows (Keep Awake, Sound, How to Play, Appearance), where they went unfound. `PackDefinition.useSettingsRules?: () => ReactNode` is a hook `SettingsDialog` calls on every render (a pack without one gets null) and hands to `BaseSettingsDialog` as `leading` (`@tastic/hud` 0.29.0), which draws it first and labels its own rows GENERAL under it. Solitaire's finds the game from the route and returns its rules section, or null on Home, where the dialog is unchanged. A minor release; DuelTastic and PuckTastic pass nothing and see no change. **Needs `@tastic/hud` 0.29.0** (`leading`), as the peer floor and dev dependency. Tests: `packSections.test.tsx`'s two cases (the rules leading, the pack's sections under them; nothing leading when the hook returns null). Seen on Solitaire's web build with this package's build copied into its `node_modules`; not on a device. Released in 0.8.0, with `@infinitetoken/tsconfig` brought to 0.7.

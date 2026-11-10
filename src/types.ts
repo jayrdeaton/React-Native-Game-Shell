@@ -292,6 +292,11 @@ export interface PackDefinition {
   // The pack's own Settings sections (how cards look, how play is helped along), in every Settings
   // dialog under the shell's own rows and any a play screen adds. Their values live in `reducers`.
   SettingsSections?: ComponentType
+  // What goes FIRST in every Settings dialog the pack opens, above the shell's own rows: the rules of
+  // the game the dialog is opened in (Solitaire finds it from the route), which someone opening
+  // Settings from a game is most likely there for. Null where there is nothing to put first (Home), and
+  // the dialog is then as it was. A hook, called on every render of the dialog.
+  useSettingsRules?: () => ReactNode
   // Store keys of the pack's own, beside the shell's and each game's (GameDefinition.reducers): what
   // SettingsSections saves, or anything else that belongs to every game. Never a key the shell or a
   // game already mounts.

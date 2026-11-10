@@ -19,7 +19,12 @@ jest.mock('@tastic/hud/chrome', () => {
   const { View: RNView } = require('react-native')
   return {
     ...jest.requireActual('@tastic/hud/chrome'),
-    BaseSettingsDialog: ({ children }: { children: ReactNode }) => <RNView testID='settings'>{children}</RNView>,
+    BaseSettingsDialog: ({ children, leading }: { children: ReactNode; leading?: ReactNode }) => (
+      <RNView testID='settings'>
+        {leading != null && <RNView testID='leading'>{leading}</RNView>}
+        {children}
+      </RNView>
+    ),
     BaseStatsScreen: ({ children }: { children: ReactNode }) => <RNView testID='stats'>{children}</RNView>
   }
 })
@@ -71,6 +76,20 @@ describe("the pack's Settings sections", () => {
 
   it('show in a Settings dialog with no rows of a play screen (Home, a loadout)', async () => {
     const pack = standInPack([standInGame('klondike')], { SettingsSections: PackSections })
+    await renderIn(pack, <SettingsDialog visible onDismiss={() => {}} />)
+
+    expect(testIds()).toEqual(['settings', 'pack-sections'])
+  })
+
+  it("go under the game's rules, which lead the dialog (PackDefinition.useSettingsRules)", async () => {
+    const pack = standInPack([standInGame('klondike')], { SettingsSections: PackSections, useSettingsRules: () => <View testID='game-rules' /> })
+    await renderIn(pack, <SettingsDialog visible onDismiss={() => {}} />)
+
+    expect(testIds()).toEqual(['settings', 'leading', 'game-rules', 'pack-sections'])
+  })
+
+  it('lead with nothing where the pack has no rules to put first (Home)', async () => {
+    const pack = standInPack([standInGame('klondike')], { SettingsSections: PackSections, useSettingsRules: () => null })
     await renderIn(pack, <SettingsDialog visible onDismiss={() => {}} />)
 
     expect(testIds()).toEqual(['settings', 'pack-sections'])

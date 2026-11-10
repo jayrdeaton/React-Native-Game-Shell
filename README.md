@@ -102,6 +102,7 @@ the front of an in-app link, so a route starting with a game id equal to the bas
 | `fonts?` | Fonts the pack's own art needs, loaded behind the splash screen beside the icon font. |
 | `fontFamily?` | The typeface on every Paper text variant. Unset is Paper's own. |
 | `otaVersion` | The version label in Settings. |
+| `useSettingsRules?` | A hook returning what goes first in every Settings dialog, above the shell's rows: the rules of the game it's opened in. Null where there's nothing (Home). |
 | `SettingsSections?` | The pack's own Settings sections, in every Settings dialog, under the shell's rows and any a play screen adds. |
 | `reducers?` | The pack's own store keys (what `SettingsSections` saves), beside the shell's and the games'. Never a key either already mounts. |
 | `StatsSections?` | A section across the pack's games (a calendar of play), first on the stats screen's Stats tab, handed its two filters (`PackStatsSectionsProps`: `profileId`, null for Everyone, and `gameId`, null for All Games). |
@@ -233,7 +234,7 @@ became a package (the lower of the two where they differ).
 | `@rific/feedback-press` | >=0.13.1 | haptic and sound settings, the UI sounds |
 | `@rific/toaster` | >=0.10.1 | toasts (DuelTastic runs 0.12, PuckTastic 0.10) |
 | `@tastic/core` | >=0.15.0 | the seat mode from the window's shape, the root background |
-| `@tastic/hud` | >=0.27.1 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0; 0.27.1's options for a pack drawn on its own backdrop), How to Play |
+| `@tastic/hud` | >=0.29.0 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0; 0.27.1's options for a pack drawn on its own backdrop; 0.28.0's Ready pill; 0.29.0's leading Settings sections), How to Play |
 | `@tastic/profile` | >=0.16.2 | profiles, the seat buttons, seat colors |
 | `@tastic/achievements` | >=0.6.0 | `createGameStats`, `forgetProfileAchievements` |
 | `@tastic/split-screen` | >=0.5.5 | the 2 Player loadout's two halves |
