@@ -8,6 +8,7 @@ import { AppState, type AppStateStatus, type LayoutChangeEvent, type NativeScrol
 import { Icon, Portal, SegmentedButtons, Text } from 'react-native-paper'
 
 import { useGameGuide } from '../components/GuideHost'
+import { SEGMENT_RADIUS, SEGMENT_THEME } from '../components/segmentTheme'
 import { SettingsDialog } from '../components/SettingsDialog'
 import { useFrozenWhileHidden } from '../hooks/useFrozenWhileHidden'
 import { useLastActiveGame } from '../hooks/useLastActiveGame'
@@ -118,7 +119,7 @@ function HomeMenu() {
   const [tabLabel, setTabLabel] = useState(() => tabs?.[0].label ?? null)
   const tab = tabs ? (tabs.find((t) => t.label === tabLabel) ?? tabs[0]) : null
   const tabButtons = useMemo(() => tabs?.map(({ label }) => ({ value: label, label })) ?? [], [tabs])
-  const tabBar = tab && <SegmentedButtons value={tab.label} onValueChange={setTabLabel} buttons={tabButtons} style={[styles.tabs, pack.Backdrop && { backgroundColor: colors.surface }]} />
+  const tabBar = tab && <SegmentedButtons value={tab.label} onValueChange={setTabLabel} buttons={tabButtons} theme={SEGMENT_THEME} style={[styles.tabs, pack.Backdrop && { backgroundColor: colors.surface }]} />
   const columnClamp = useClampOnShrink()
   const gridClamp = useClampOnShrink()
 
@@ -470,9 +471,9 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1
   },
-  // SegmentedButtons' own rounding, so a surface behind it is the same pill (the stats screen's tabs).
+  // SegmentedButtons' own rounding (SEGMENT_THEME's), so a surface behind it is the same pill (the stats screen's tabs).
   tabs: {
-    borderRadius: 20
+    borderRadius: SEGMENT_RADIUS
   },
   // The same well as a row, turned on its side.
   tile: {

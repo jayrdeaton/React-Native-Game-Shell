@@ -7,6 +7,7 @@ import { SegmentedButtons, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useDispatch } from 'react-redux'
 
+import { SEGMENT_RADIUS, SEGMENT_THEME } from '../components/segmentTheme'
 import { useProfiles } from '../hooks/useProfiles'
 import { safeBack } from '../navigation'
 import { usePack } from '../PackContext'
@@ -23,8 +24,12 @@ const TABS = [
 ]
 // With a pack's own tabs, three or more don't fit a phone as equal segments with icons (Paper pads each
 // label 16pt a side, and "Achievements" alone is ~109pt in Solitaire's font), so each segment is as wide
-// as its label and the icons go: Solitaire's three take 309pt of a 375pt phone's 335pt row.
-const LABEL_WIDE_TAB = { flexBasis: 'auto', flexGrow: 1, flexShrink: 1 } as const
+// as its label and the icons go: Solitaire's three take 309pt of a 375pt phone's 335pt row. `flex: 0`
+// takes back the `flex: 1` Paper gives every segment: on iOS and Android, Yoga treats a `flexBasis` of
+// 'auto' as unset and a positive `flex` then makes the basis 0, so all three came out equal and cut
+// "Achievements" short on every phone (CardTastic's App Store screenshots, 2026-11-11). The web's CSS lets
+// the longhands win, which is the only place this had been checked.
+const LABEL_WIDE_TAB = { flex: 0, flexBasis: 'auto', flexGrow: 1, flexShrink: 1 } as const
 const NO_PACK_TABS: readonly PackStatsTab[] = []
 
 // The pickers' values for Everyone and All Games (neither is ever a profile or game id).
@@ -131,7 +136,7 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
       filters (pressAway's zIndex sits below filtersOpen's), so a tap anywhere on the page but a
       menu closes it. Off the page (the header, the margins) StatsPressAway closes it. */}
       <PressAwayOverlay active={pickerHost.openId !== null} onPress={pickerHost.close} style={styles.pressAway} />
-      <SegmentedButtons value={tab} onValueChange={setTab} buttons={tabButtons} style={[styles.tabs, surface]} />
+      <SegmentedButtons value={tab} onValueChange={setTab} buttons={tabButtons} theme={SEGMENT_THEME} style={[styles.tabs, surface]} />
 
       {/* Takes a press on its own blank parts (the gap, an open menu's padding) while a menu is open, so
       it never reaches StatsPressAway. */}
@@ -207,8 +212,8 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1
   },
-  // SegmentedButtons' own rounding, so a surface behind it is the same pill.
+  // SegmentedButtons' own rounding (SEGMENT_THEME's), so a surface behind it is the same pill.
   tabs: {
-    borderRadius: 20
+    borderRadius: SEGMENT_RADIUS
   }
 })

@@ -120,6 +120,13 @@ describe("a pack's tabs", () => {
     expect(background()).toEqual(expect.any(String))
   })
 
+  it('round their ends at 19pt, so iOS draws the end segments with no line across them, and so does the surface behind', async () => {
+    await renderHome({ homeTabs: TABS, Backdrop: () => null })
+
+    expect(lastTabs().theme).toEqual({ roundness: 3.8 })
+    expect(StyleSheet.flatten(lastTabs().style).borderRadius).toBe(19)
+  })
+
   it('sit over the grid on a wide screen, where they pick the tiles shown', async () => {
     mockWindow = PHONE_SIDEWAYS
     await renderHome({ homeTabs: TABS }, TILED_GAMES)

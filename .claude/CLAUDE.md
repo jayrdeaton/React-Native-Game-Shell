@@ -257,7 +257,13 @@ same screens, but for six fixes Solitaire had already made to the same screens, 
 - **The stats screen (item 9).** `GUEST_PLAYER_ID` is `'guest'`, Solitaire's id, not `seatPlayerKey`'s
   `guest:1`. `resetStats` is a hook plus labels, not an action: Solitaire's reset clears saves and
   records through its own hooks. `statsGameTitles: false` exists because Solitaire's rule-set wells
-  already say "KLONDIKE · DRAW 3" under the heading the screen would add.
+  already say "KLONDIKE · DRAW 3" under the heading the screen would add. With a pack's own tabs
+  (`statsTabs`), each segment is as wide as its label (`LABEL_WIDE_TAB`), and it has to carry `flex: 0`.
+  Paper gives every segment `flex: 1`, and Yoga (iOS, Android) treats a `flexBasis` of 'auto' as unset, so
+  a positive `flex` makes the basis 0. Without the `flex: 0` the segments came out equal and cut
+  "Achievements" to "Achievem…" on every phone (CardTastic's App Store screenshots, 2026-11-11). The web's
+  CSS lets the longhands win, which is why checking it only there missed it. Seen fixed on the iOS 27
+  simulator (CardTastic, a 440pt iPhone and a 13" iPad); `statsOptions.test.tsx` pins the `flex: 0`.
 - **Profiles (item 10).** `newProfileColor` is an option rather than `seatColors[1]`: DuelTastic's
   seat 1 is blue, and a new profile there has always started on auto-paper's first swatch (red).
 - **The store (item 11):** `blacklist`, `serializableIgnoredPaths`, `middleware` on `PackStoreConfig`.
@@ -364,8 +370,11 @@ optional, so a pack without it (PuckTastic, DuelTastic) draws the same Home.
   the pack's order. Solitaire's read `seatTwo` (none for one player), so the tabs follow the games'
   definitions with no id list kept beside `games`. A game no tab includes isn't on Home; fewer than two
   tabs is no switch at all.
-- **The switch** is the stats screen's: Paper's `SegmentedButtons`, labels only, `borderRadius` 20 and
-  on the theme's surface over a `Backdrop`. Upright it sits between seat 1's button and the rows, as wide
+- **The switch** is the stats screen's: Paper's `SegmentedButtons`, labels only, `SEGMENT_THEME`
+  (`components/segmentTheme.ts`) and on the theme's surface over a `Backdrop`. The theme sets Paper's
+  roundness to 3.8, a 19pt corner instead of 20, and the surface behind takes `SEGMENT_RADIUS`. With 20, iOS
+  smears the last segment's left border into a line across it ("Two Player", "Achievements"; found in
+  CardTastic's App Store screenshots, 2026-11-11, the same fix CardTastic made in its own switches). Upright it sits between seat 1's button and the rows, as wide
   as the list (480pt at most); wide, at the top of the grid's scroller, as wide as the grid, 16pt above
   the tiles. Both scroll with the games.
 - **Hidden, not unmounted.** A game outside the tab is `display: 'none'` (its row in the column, its

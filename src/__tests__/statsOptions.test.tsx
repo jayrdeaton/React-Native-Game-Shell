@@ -163,7 +163,17 @@ describe("the pack's own tabs", () => {
     for (const button of buttons) {
       expect(button.icon).toBeUndefined()
       expect(button.style).toEqual(expect.objectContaining({ flexBasis: 'auto', flexGrow: 1 }))
+      // Paper's own segment style is `flex: 1`, which Yoga (iOS, Android) turns into a basis of 0 unless the
+      // segment's style takes it back: then every segment is equal and "Achievements" is cut short.
+      expect(StyleSheet.flatten([{ flex: 1, minWidth: 76 }, button.style]).flex).toBe(0)
     }
+  })
+
+  it('round their ends at 19pt, so iOS draws the end segments with no line across them, and so does the surface behind', async () => {
+    await renderStats({ statsTabs: [{ value: 'records', label: 'Records', Content: records }] })
+
+    expect(mockTabs.mock.lastCall![0].theme).toEqual({ roundness: 3.8 })
+    expect(StyleSheet.flatten(mockTabs.mock.lastCall![0].style).borderRadius).toBe(19)
   })
 
   it('leave a pack without any with its two tabs, icons and all', async () => {
