@@ -4,7 +4,7 @@ import { AppState, type AppStateStatus, View } from 'react-native'
 
 import { LoadoutRoute, PlayRoute } from '../screens/GameRoute'
 import { computeHomeLayout, PREVIEW_ASPECT, ROW_PREVIEW_WIDTH } from '../screens/homeLayout'
-import { HomeScreen } from '../screens/HomeScreen'
+import { HomeScreen, ROW_BLURB_LINES } from '../screens/HomeScreen'
 import { shellWrapper, standInGame, standInPack, standInStore } from '../testUtils/pack'
 import type { GameDefinition, GamePreviewProps, HeroTitleProps, PackDefinition } from '../types'
 
@@ -80,6 +80,15 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers()
+})
+
+describe("a row's blurb", () => {
+  it('wraps to three lines before it is cut off, so a narrow phone shows all of it', async () => {
+    const long = standInGame('trap', { blurb: 'The classic light-trail duel. Box the other rider in.' })
+    await renderHome(standInPack([long]))
+    expect(screen.getByText(long.blurb).props.numberOfLines).toBe(ROW_BLURB_LINES)
+    expect(ROW_BLURB_LINES).toBeGreaterThanOrEqual(3)
+  })
 })
 
 describe('a game with no loadout', () => {

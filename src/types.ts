@@ -137,7 +137,8 @@ export interface GameRulesProps {
 export interface GameDefinition {
   id: string
   title: string
-  // One line under the tile's name on Home.
+  // A sentence or two under the game's name on Home: a row shows up to three lines (ROW_BLURB_LINES)
+  // on the narrowest phones, a tile three.
   blurb: string
   // Left out only by a game with a Preview, which Home draws in its place.
   icon?: ComponentType<GameIconProps>

@@ -276,8 +276,11 @@ interface GameRowProps {
 }
 
 // One game on its own well: its icon at app-icon size (the art was drawn as an app icon), or its
-// preview where it has one, its name and one-line blurb, and a rules button at the end that shows its
+// preview where it has one, its name and short blurb (up to ROW_BLURB_LINES lines), and a rules button at the end that shows its
 // How to Play cards without opening the game.
+// How many lines a row's blurb may wrap to before it's cut off.
+export const ROW_BLURB_LINES = 3
+
 function GameRow({ game, hidden, dark, p1Color, p2Color, previewRevealed, onPress, onRules }: GameRowProps) {
   const well = useWellColors()
   const GameIcon = game.icon
@@ -291,7 +294,9 @@ function GameRow({ game, hidden, dark, p1Color, p2Color, previewRevealed, onPres
           <Text variant='titleLarge' style={[styles.rowTitle, { color: well.fg }]} numberOfLines={1}>
             {game.title}
           </Text>
-          <Text variant='bodyMedium' style={{ color: well.fgMuted }} numberOfLines={2}>
+          {/* Three lines, as a tile allows: a narrow phone (an iPhone SE, a 411dp Android phone) wraps a
+          55-character blurb onto a third line in the monospace, and two lines cut it off with an ellipsis */}
+          <Text variant='bodyMedium' style={{ color: well.fgMuted }} numberOfLines={ROW_BLURB_LINES}>
             {game.blurb}
           </Text>
         </View>
