@@ -226,7 +226,7 @@ became a package (the lower of the two where they differ).
 | `expo-constants` | >=58.0.12 | the web tab title |
 | `expo-blur`, `@react-native-masked-view/masked-view` | >=58.0.4, >=0.3.2 | auto-paper's blur and its scroll fade, Home's fading scrollers |
 | `expo-haptics`, `expo-keep-awake` | >=58.0.7, >=58.0.3 | the toaster's haptics, Keep Awake |
-| `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context` | >=3.3.0, >=4.7.1, >=5.10.1 | the gesture root, auto-paper's dialogs and the loadout's fades, insets |
+| `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context` | >=3.3.0, >=4.7.1, >=5.11.0 | the gesture root, auto-paper's dialogs and the loadout's fades, insets (with room for iPadOS's window controls) |
 | `react-native-paper` | >=5.15.3 | text, icons, the toaster and feedback-press |
 | `@reduxjs/toolkit`, `redux`, `react-redux`, `redux-persist`, `@react-native-async-storage/async-storage` | >=2.13.0, >=5.0.1, >=9.3.0, >=6.0.0, >=2.2.0 | the store and where it's saved |
 | `@rific/auto-paper` | >=0.13.4 | the theme |

@@ -18,6 +18,7 @@ import { GuideHost } from './components/GuideHost'
 import { Providers } from './components/Providers'
 import { Theme } from './components/Theme'
 import { UpdateDialog } from './components/UpdateDialog'
+import { WindowControlsInsets } from './components/WindowControlsInsets'
 import { LastActiveGameProvider } from './hooks/useLastActiveGame'
 import { ProfilesProvider, useProfiles } from './hooks/useProfiles'
 import { PackProvider, usePack } from './PackContext'
@@ -196,41 +197,43 @@ export function RootLayout({ pack, store, persistor }: RootLayoutProps) {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <PackProvider pack={pack}>
-          <Fonts>
-            <Providers store={store} persistor={persistor}>
-              <Theme>
-                <ProfilesProvider>
-                  {/* Inside Providers' PersistGate, so the game a cold launch resumes (read once, as
-                  it mounts) is the saved one. */}
-                  <LastActiveGameProvider>
-                    <GameProviders games={pack.games}>
-                      <PackRoot pack={pack}>
-                        <GatedApp>
-                          <HapticGatedToastProvider>
-                            {/* Wraps the stack (rather than sitting beside it like UpdateDialog)
-                            because Home's tiles and the loadout's How to Play row reach it through
-                            context (see GuideHost). Inside the toast provider because the card renders
-                            through a Portal, and inside the gate so it mounts together with Home rather
-                            than before it. */}
-                            <GuideHost>
-                              <AppStack />
-                            </GuideHost>
-                            {/* historyButton/clearButton off: there's no toast history to open, and a
-                            control row for it above the toast stack would go nowhere. limit pins the
-                            package's current default (3) so a future toaster release can't change it. */}
-                            {pack.Toaster ? <PackToaster Toaster={pack.Toaster} /> : <RotatingToaster />}
-                            <UpdateDialog />
-                          </HapticGatedToastProvider>
-                        </GatedApp>
-                      </PackRoot>
-                    </GameProviders>
-                  </LastActiveGameProvider>
-                </ProfilesProvider>
-              </Theme>
-            </Providers>
-          </Fonts>
-        </PackProvider>
+        <WindowControlsInsets>
+          <PackProvider pack={pack}>
+            <Fonts>
+              <Providers store={store} persistor={persistor}>
+                <Theme>
+                  <ProfilesProvider>
+                    {/* Inside Providers' PersistGate, so the game a cold launch resumes (read once, as
+                    it mounts) is the saved one. */}
+                    <LastActiveGameProvider>
+                      <GameProviders games={pack.games}>
+                        <PackRoot pack={pack}>
+                          <GatedApp>
+                            <HapticGatedToastProvider>
+                              {/* Wraps the stack (rather than sitting beside it like UpdateDialog)
+                              because Home's tiles and the loadout's How to Play row reach it through
+                              context (see GuideHost). Inside the toast provider because the card renders
+                              through a Portal, and inside the gate so it mounts together with Home rather
+                              than before it. */}
+                              <GuideHost>
+                                <AppStack />
+                              </GuideHost>
+                              {/* historyButton/clearButton off: there's no toast history to open, and a
+                              control row for it above the toast stack would go nowhere. limit pins the
+                              package's current default (3) so a future toaster release can't change it. */}
+                              {pack.Toaster ? <PackToaster Toaster={pack.Toaster} /> : <RotatingToaster />}
+                              <UpdateDialog />
+                            </HapticGatedToastProvider>
+                          </GatedApp>
+                        </PackRoot>
+                      </GameProviders>
+                    </LastActiveGameProvider>
+                  </ProfilesProvider>
+                </Theme>
+              </Providers>
+            </Fonts>
+          </PackProvider>
+        </WindowControlsInsets>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   )
