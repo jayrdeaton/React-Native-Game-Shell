@@ -32,7 +32,8 @@ package ecosystem, on [`@tastic/hud`](https://github.com/jayrdeaton/react-native
 - **What a game builds on**: `createPlayerSettings` (its settings and controls, kept per player),
   `createGameStats` (its stats and achievements), `createGameGuideSlice` (which version of its How to
   Play a player has seen), `onProfileRemoved` (forget a deleted profile), `useActiveRound`,
-  `useProfiles`, `useSeatColors`, `SettingsDialog`, `safeBack` and `imageGameIcon`.
+  `useProfiles`, `useSeatColors`, `SettingsDialog`, `safeBack`, `useBackBlock` (Android's and the
+  browser's back mid-match open Quit Match?) and `imageGameIcon`.
 
 ## Install
 
@@ -146,6 +147,7 @@ What a game can leave out or add, each optional, so a two-seat game sets none of
 | Field | |
 | --- | --- |
 | no `seatTwo` (nor `sideBySideWhenWide`) | A game for one player: its loadout has no opponent button, every round is solo (`useActiveRound` falls back to `'solo'`), and its How to Play describes a solo round. |
+| no `'cpu'` in `seatTwo` | A game with no CPU, such as `['nobody', 'person']`. Seat 2's saved choice is the whole pack's and starts on the CPU, so `seatTwoFor` reads a choice a game doesn't offer as the CPU where it has one, and as its first choice where it has none: a fresh install opens this game's loadout on that choice, its How to Play describes it, and `useActiveRound` falls back to it. The saved choice only changes when player 1 picks another. |
 | no `useLoadout` | Nothing to set up first: Home opens its play screen straight away, after its How to Play the first time, and a link to its loadout plays it. Its rule variants go in its play screen's Settings: `<SettingsDialog>` takes `children`. |
 | no `cpuDifficulty` (in `GameLoadout`) | A CPU with no levels: player 1's opponent menu offers one plain CPU. |
 | `resumable` | A cold launch drops the player back into its play screen if they left the app there rather than backing out of it. The shell remembers only which game (`lastActiveGame`); the game saves and restores its own board. |
@@ -211,6 +213,34 @@ the window's middle.
 - **When:** faded out over `MATCH_CHIPS_FADE_MS` (150) and not pressable while `playing`, back the moment
   it stops; up all match at a computer.
 - **Look:** a 24 icon in the theme's full contrast on a translucent chip of the page's color.
+
+### Back mid-match (`useBackBlock`)
+
+`useBackBlock(held, onHeld)` holds a play screen while `held`: every way off it but the `quit` it
+returns (Android's hardware or gesture back, the browser's back, a link) runs `onHeld` instead. Hand it
+the same test the back chip's Quit Match? asks with, and `requestBack` from `@tastic/hud`'s
+`useQuitConfirmation`, so a system back opens the same Quit Match? the chip does; use `quit` for
+Quit Match?'s and Paused's own Quit, which `safeBack` alone would be stopped by.
+
+```tsx
+const hasProgressRef = useRef(false)
+const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => hasProgressRef.current, safeBack)
+// ... the game's state hook, which needs `paused` from confirmVisible ...
+const hasProgress = phase !== 'gameOver' && (scores[0] > 0 || scores[1] > 0)
+useEffect(() => {
+  hasProgressRef.current = hasProgress
+})
+const quit = useBackBlock(hasProgress, requestBack)
+
+<ConfirmDialog visible={confirmVisible} title='Quit Match?' onConfirm={quit} onCancel={cancelBack} />
+```
+
+- `held` is a plain boolean read as the screen renders (expo-router has to know before a back comes
+  in), so a game whose progress comes from a state hook that itself needs Quit Match?'s `paused` calls
+  this after that hook, and mirrors the value into the getter it gives `useQuitConfirmation`.
+- Off when there's nothing to lose (0-0, Game Over), so a back there leaves at once, as the chip does.
+- While it's on, the web also asks before the page unloads (expo-router's `usePreventRemove` adds a
+  `beforeunload` handler with it). iOS's swipe back is off on every screen anyway.
 
 ## Peer dependencies
 

@@ -7,7 +7,7 @@ import { liveplayActions } from '../redux/liveplaySlice'
 import { opponentActions } from '../redux/opponentSlice'
 import { type LoadoutGame, LoadoutScreen } from '../screens/LoadoutScreen'
 import { shellWrapper, STAND_IN_LOADOUT, standInGame, standInPack, standInStore } from '../testUtils/pack'
-import { type GameGuide, roundModeFor, type SeatTwo, seatTwoFor } from '../types'
+import { type GameGuide, type RoundMode, roundModeFor, type SeatTwo, seatTwoFor } from '../types'
 
 // A game for one player (no GameDefinition.seatTwo): no opponent button in its loadout, and every round
 // solo. The loadout renders for real, with player 1's real opponent button; what needs a native runtime or
@@ -78,9 +78,104 @@ describe('seatTwoFor', () => {
     }
   })
 
-  it("keeps a game's own choice, and reads one it doesn't offer as the CPU", () => {
+  it("keeps a game's own choice, and reads one it doesn't offer as the CPU in a game with one", () => {
     expect(seatTwoFor('person', ['cpu', 'person'])).toBe('person')
     expect(seatTwoFor('nobody', ['cpu', 'person'])).toBe('cpu')
+    // CardTastic's real-time games at a computer offer the CPU alone.
+    expect(seatTwoFor('person', ['cpu'])).toBe('cpu')
+    // The order of a game's choices doesn't matter while it has a CPU.
+    expect(seatTwoFor('nobody', ['person', 'cpu'])).toBe('cpu')
+  })
+})
+
+// A game with seat 2 but no CPU (Labyrinth: Solo or a person). The pack's saved seat 2 starts on the CPU
+// on a fresh install (DEFAULT_OPPONENT), which such a game has to read as one of its own choices.
+describe('a game with seat 2 but no CPU', () => {
+  const NO_CPU: SeatTwo[] = ['nobody', 'person']
+
+  it("reads a saved CPU as the game's first choice, and keeps a choice it offers", () => {
+    expect(seatTwoFor('cpu', NO_CPU)).toBe('nobody')
+    expect(roundModeFor(seatTwoFor('cpu', NO_CPU))).toBe('solo')
+    expect(seatTwoFor('cpu', ['person', 'nobody'])).toBe('person')
+    expect(seatTwoFor('cpu', ['person'])).toBe('person')
+    expect(seatTwoFor('person', NO_CPU)).toBe('person')
+    expect(seatTwoFor('nobody', NO_CPU)).toBe('nobody')
+    expect(seatTwoFor('nobody', ['person'])).toBe('person')
+  })
+
+  it("plays the game's first choice when no round was committed, never the CPU", async () => {
+    const maze = standInGame('maze', { seatTwo: NO_CPU })
+    const trial = standInGame('trial', { seatTwo: ['person', 'nobody'] })
+    const pack = standInPack([maze, trial])
+    const roundFor = async (game: string) => (await renderHook(() => useActiveRound(game, {}), { wrapper: shellWrapper(pack, standInStore(pack)) })).result.current.mode
+
+    expect(await roundFor('maze')).toBe('solo')
+    expect(await roundFor('trial')).toBe('twoPlayer')
+  })
+
+  it('describes a solo round in its How to Play on a fresh install', async () => {
+    const { GuideHost } = jest.requireActual('../components/GuideHost') as typeof import('../components/GuideHost')
+    const getSteps = jest.fn(() => [])
+    const guide: GameGuide = { version: 1, selectVersionSeen: () => 1, markSeen: () => ({ type: 'test/markSeen' }), selectInput: () => ({}), getSteps }
+    const pack = standInPack([standInGame('maze', { seatTwo: NO_CPU, guide })])
+    const store = standInStore(pack)
+    expect(store.getState().opponent.seatTwo).toBe('cpu')
+    const Wrapper = shellWrapper(pack, store)
+
+    await render(
+      <Wrapper>
+        <GuideHost>{null}</GuideHost>
+      </Wrapper>
+    )
+
+    expect(getSteps).toHaveBeenCalledWith({}, expect.objectContaining({ mode: 'solo' }))
+  })
+
+  describe('its loadout', () => {
+    const useLoadout = jest.fn((_mode: RoundMode) => ({ ...STAND_IN_LOADOUT, cpuDifficulty: undefined }))
+    const maze = standInGame('maze', { seatTwo: NO_CPU, useLoadout }) as LoadoutGame
+    const lastOpponent = () =>
+      mockOptionPicker.mock.calls
+        .map(([props]) => props)
+        .filter((props) => props.id === 'p1-opponent')
+        .at(-1)
+
+    async function renderMaze() {
+      const pack = standInPack([maze])
+      const store = standInStore(pack)
+      await render(<LoadoutScreen game={maze} />, { wrapper: shellWrapper(pack, store) as (props: { children: ReactNode }) => ReactNode })
+      return store
+    }
+
+    beforeEach(() => useLoadout.mockClear())
+
+    it('opens on Solo on a fresh install, with no CPU in the menu, and Ready starts a solo round', async () => {
+      const store = await renderMaze()
+
+      expect(lastOpponent().options).toEqual([
+        { value: 'nobody', label: 'Solo', icon: 'account-off-outline', dividerBefore: true },
+        { value: 'person', label: 'Player', icon: 'account-outline', dividerBefore: true }
+      ])
+      expect(lastOpponent().value).toBe('nobody')
+      expect(lastOpponent().colorSection).toBeUndefined()
+      expect(useLoadout).toHaveBeenLastCalledWith('solo')
+
+      await act(async () => fireEvent.press(screen.getByTestId('ready')))
+
+      expect(store.getState().liveplay.activeRound).toEqual({ game: 'maze', mode: 'solo', settings: STAND_IN_LOADOUT.roundSettings })
+      // The pack's saved seat 2 stays the CPU for its other games: only a pick changes it.
+      expect(store.getState().opponent.seatTwo).toBe('cpu')
+    })
+
+    it('makes the round 2 Player when Player is picked', async () => {
+      const store = await renderMaze()
+
+      await act(async () => lastOpponent().onChange('person'))
+
+      expect(store.getState().opponent.seatTwo).toBe('person')
+      expect(lastOpponent().value).toBe('person')
+      expect(useLoadout).toHaveBeenLastCalledWith('twoPlayer')
+    })
   })
 })
 

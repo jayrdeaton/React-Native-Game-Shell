@@ -20,6 +20,7 @@ export { SettingsDialog, type SettingsDialogProps } from './components/SettingsD
 export { useActiveRound } from './hooks/useActiveRound'
 export { useAppSettings } from './hooks/useAppSettings'
 export { useAtComputer } from './hooks/useAtComputer'
+export { useBackBlock } from './hooks/useBackBlock'
 export { useOpponent } from './hooks/useOpponent'
 export { ProfilesProvider, useProfiles } from './hooks/useProfiles'
 export { useSeatColors } from './hooks/useSeatColors'

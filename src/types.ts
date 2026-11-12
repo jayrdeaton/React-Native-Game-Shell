@@ -24,12 +24,15 @@ export function roundModeFor(seatTwo: SeatTwo): RoundMode {
   return seatTwo === 'person' ? 'twoPlayer' : seatTwo === 'nobody' ? 'solo' : 'vsCpu'
 }
 
-// Seat 2's saved choice in one game (GameDefinition.seatTwo): a saved 'nobody' reads as the CPU in a
-// game without a solo mode, and so does anything else the game doesn't offer. A game with no seat 2
-// at all (no seatTwo) is always nobody, so it plays solo.
+// Seat 2's saved choice in one game (GameDefinition.seatTwo). The saved choice is the whole pack's, so
+// a game can be handed one it doesn't offer: that reads as the CPU where the game has one (a saved
+// 'nobody' in a game without a solo mode), and as the game's first choice where it has none (a fresh
+// install's saved CPU, in a game offering ['nobody', 'person'], is Solo). A game with no seat 2 at all
+// (no seatTwo) is always nobody, so it plays solo.
 export function seatTwoFor(saved: SeatTwo, choices: readonly SeatTwo[] | undefined): SeatTwo {
-  if (!choices) return 'nobody'
-  return choices.includes(saved) ? saved : 'cpu'
+  if (!choices?.length) return 'nobody'
+  if (choices.includes(saved)) return saved
+  return choices.includes('cpu') ? 'cpu' : choices[0]
 }
 
 // The players who take part in a round and have to press Ready: a CPU and nobody don't.

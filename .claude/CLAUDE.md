@@ -127,8 +127,9 @@ widened `PackDefinition`, and `createPackStore` builds the same keys from them, 
 them); nothing here has run in a browser or on a device.
 
 1. **Games for one player** (`GameDefinition.seatTwo`, `twoPlayerSeats` and `GameLoadout.cpuDifficulty`
-   optional). `seatTwoFor(saved, choices)` (now in `types.ts`, shared by the loadout and the How to
-   Play host) reads a game without `seatTwo` as `'nobody'`, so its loadout has no seat 2 button and
+   optional). `seatTwoFor(saved, choices)` (now in `types.ts`, shared by the loadout, the How to
+   Play host and, since 2026-11-12, `useActiveRound`; see "A game without a CPU") reads a game
+   without `seatTwo` as `'nobody'`, so its loadout has no seat 2 button and
    commits a `'solo'` round, its How to Play describes a solo round, and `useActiveRound` falls back to
    `'solo'` for it (`'vsCpu'` for every other game, as before). A game with seat 2 but no
    `cpuDifficulty` gets one plain CPU row in seat 2's menu.
@@ -487,7 +488,7 @@ default-exported reducers are exported by name (`appSettingsReducer`, `liveplayR
 `PackStatsSectionsProps` and `PREVIEW_ASPECT` (the shape a game's `Preview` draws in). 0.2.0 added
 `GUEST_PLAYER_ID` and the types `GuidelessGameDefinition`, `PackGameDefinition`, `PackGuide`,
 `GameRulesProps`, `StackScreenOptions`, `FeedbackSounds`, `PackStatsTab`, `PackStatsReset` and
-`PickerAlign`. 0.4.0 added the type `HomeTab` (Home's tabs). 0.6.0 added `MatchChips`, its props type, `MATCH_CHIPS_DESKTOP_MIN_WIDTH` and `MATCH_CHIPS_FADE_MS`. 0.7.0 added `useAtComputer` and removed `MATCH_CHIPS_DESKTOP_MIN_WIDTH`.
+`PickerAlign`. 0.4.0 added the type `HomeTab` (Home's tabs). 0.6.0 added `MatchChips`, its props type, `MATCH_CHIPS_DESKTOP_MIN_WIDTH` and `MATCH_CHIPS_FADE_MS`. 0.7.0 added `useAtComputer` and removed `MATCH_CHIPS_DESKTOP_MIN_WIDTH`. The release after 0.8.3 adds `useBackBlock` (see "Back mid-match").
 
 ## Peer Dependencies
 
@@ -553,7 +554,8 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   is one `jest.fn` on the prototype every instance shares). `homeOptions`
   also has `usePickerAlign` for seat 1's menu. `testUtils/pack.tsx`'s `standInGame` gives a `GuidelessGameDefinition` when handed
   `guide: undefined`. Each pack's own `store.test.ts` (its keys and saves) and its status bar source
-  scan stay in the app.
+  scan stay in the app. `seatlessGames` also has a game with seat 2 but no CPU (see "A game without
+  a CPU"). `backBlock` runs `useBackBlock` under expo-router's real router (see "Back mid-match").
 - **The screens' tests** render the real screen inside the real store, pack and resume provider
   (`shellWrapper`), and replace per file, with `jest.mock`, what needs a native runtime or another
   provider: expo-router (its `router` built inside the factory, since `navigation.ts` reads it at
@@ -570,7 +572,7 @@ plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@b
   own, picked up for the bare specifiers with no `jest.mock()` call. Without them `@tastic/profile`'s
   barrel (through hud's `StaggeredWord`) and `Theme` load real Worklets, which throws under Jest.
   Copy another of the apps' mocks over the same way when a test reaches a native module.
-- **Current suite** (2026-11-05, 0.4.0): 22 suites, 175 tests, all passing (21 and
+- **Current suite** (2026-11-12, after 0.8.3): 27 suites, 216 tests, all passing. (2026-11-05, 0.4.0: 22 suites, 175 tests; 21 and
   165 at 0.3.1, 162 at 0.3.0, 20 and 151 at 0.2.1, 11 and 79 before 0.2.0).
 
 ## Code Style
@@ -591,3 +593,20 @@ A row's blurb was clamped to two lines, which cut DuelTastic's off with an ellip
 ## Room for iPadOS's window controls (2026-11-12)
 
 Found in CardTastic's iPad check before its App Store submission: when an app runs in a window on iPadOS 26 (resized, tiled beside another app, Slide Over), the system draws the window's controls (close, minimize, tile) over the app's top-left corner, and the regular safe area makes no room for them. Every screen's top-left button sat under them (a game's Home, Home's trophy, the stats screen's and Profiles' Back, a setup screen's Back), and a tap opened the controls instead, so a game's Home couldn't be reached. `components/WindowControlsInsets.tsx`, just inside RootLayout's `SafeAreaProvider`, hands every screen on an iPad the vertically corner-adapted safe area (`useSafeAreaInsets({ cornerAdaptation: 'vertical' })`, react-native-safe-area-context 5.11.0+, UIKit's `safeAreaLayoutRegionWithCornerAdaptation`): the same as the regular one in full screen, and in a window the top lowered below the controls, so the whole app sits under them like under a title bar. Everything below reads it through `useSafeAreaInsets()` (hud's corner buttons and stats header, profile's Profiles header, the pack's own screens), so nothing else changed. Measured on the iPad 13" simulator with a test bundle: full screen top 32 regular and vertical, in portrait and landscape; a 375x667 window top 10 regular, 53 vertical (and left 66 horizontal, the other way round the controls, not used: it would push only the left buttons, and every screen's title row would need it). Not on iPhone: it has no window controls, and its vertical inset is 18 against a regular 0 in landscape (the rounded corners), which would push every landscape screen down. Android and the web pass straight through. **The peer floor of `react-native-safe-area-context` is 5.11.0** (5.10.1 has no corner adaptation; it would ignore the option and fix nothing). Pinned by `windowControlsInsets.test.tsx` (iPad gets the vertical top; iPhone, Android and the web the regular one; the iPad case fails with the platform check switched off). Seen on the iPad 13" simulator with this change copied into CardTastic's `node_modules`, in a resized window: Klondike's Home, Home's trophy, the stats screen's and Profiles' Back and RatSlap's setup Back all below the controls (even when expanded) and each tap working; full screen in both orientations unchanged; an iPhone in portrait and landscape unchanged. Not on a device.
+
+## A game without a CPU (2026-11-12)
+
+Labyrinth (`../Labyrinth`, scaffolded on the shell the same day) is the first game whose `seatTwo` has no `'cpu'`: `['nobody', 'person']`, Solo or a time trial. Seat 2's saved choice is the pack's (`opponent.seatTwo`) and a fresh install's is the CPU, and `seatTwoFor` read any choice a game didn't offer as `'cpu'`, so a fresh install opened Labyrinth's loadout as `'vsCpu'` (a CPU in seat 2, its menu listing only Solo and Player, the picker's value matching no row), its How to Play described a CPU round, and `useActiveRound`'s fallback (`seatTwo` set, so `'vsCpu'`) played one. Now `seatTwoFor` falls back to the CPU only where the game offers it, and to the game's first choice otherwise (an empty `seatTwo` counts as none, so `'nobody'`, rather than handing back `undefined`). `useActiveRound`'s fallback is `seatTwoFor(DEFAULT_OPPONENT.seatTwo, game.seatTwo)`, a fresh install's seat 2 as the game reads it, in place of its own `'vsCpu'`/`'solo'` choice. Nothing is written back: the saved choice stays the CPU for the pack's other games until player 1 picks another.
+
+**Every existing game reads the same:** each of PuckTastic's, DuelTastic's and CardTastic's two-seat games offers the CPU (CardTastic's real-time games at a computer offer only the CPU), so a choice they don't offer still reads as the CPU, `useActiveRound` still falls back to `'vsCpu'` for them and `'solo'` for a game with no seat 2, and the loadout, the opponent menu and the How to Play are handed the same value as before. `playerSettings.ts` and `HomeScreen` (what it hands `useSeatColors`) read the raw saved `'person'`, not `seatTwoFor`, and are unchanged (a saved CPU was never `'person'`). Tests: `seatlessGames`' "a game with seat 2 but no CPU" (`seatTwoFor`, `useActiveRound`'s fallback, a solo How to Play on a fresh install, the loadout opening on Solo with no CPU row, a solo round on Ready and the saved CPU left alone, and Player making it 2 Player), four of which fail on 0.8.3. Labyrinth's `useLoadout` treats any mode but 2 Player as solo to work around this; that can go once it is on a release with this fix.
+
+## Back mid-match (2026-11-12)
+
+Audit F093, from PuckTastic's Play Store checklist: during a match, Android's hardware or gesture back (and the browser's back) left the play screen at once, skipping the Quit Match? the back chip asks. DuelTastic had fixed it for its own games (2026-11-06) with a route-level `usePreventRemove` in `useMatchControls` and a copy in Snake's play screen, so the block moved here, for every pack: `hooks/useBackBlock.ts`, exported. `useBackBlock(held, onHeld)` turns expo-router's `usePreventRemove` on while `held` (a game passes the same test its Quit Match? asks with, and its `requestBack` from hud's `useQuitConfirmation` as `onHeld`), and returns `quit`, which marks the way out and calls `safeBack`. The block stops every navigation off the screen while it's on, Quit's own included, so its callback carries a marked navigation on with `repeat` and turns the block off in the same handler (the `leavingRef`/`leaving` latch), the order expo-router documents; any other navigation it stops runs `onHeld`. Turned off any sooner, the block can stand aside after stopping the navigation and never hand it to the callback, which is the bug DuelTastic's first version had (Quit did nothing mid-match).
+
+- **Why here, not hud:** hud's `useQuitConfirmation` deliberately takes no expo-router dependency (its own comment and README), and its main entry, the only one exporting it, reaches Skia, which this package never imports (`hudImports.test.ts`). An opt-in `BackHandler` in hud would only have covered Android's hardware back, not the browser's back. The shell already peers expo-router and owns `safeBack`, which `quit` has to call, and `MatchChips`, the back chip. So `useBackBlock` takes `onHeld` rather than wrapping hud's hook.
+- **`held` is a plain boolean**, read as the screen renders: expo-router has to know before a back arrives. hud's hook takes a lazy getter because a game's progress comes from a state hook that needs `paused` (from `confirmVisible`) first; such a game calls `useBackBlock` after that hook, and mirrors the same value into the getter through a ref (PuckTastic's three play screens do).
+- **On the web it also asks before the page unloads** while it's on: expo-router's `usePreventRemove` adds a `beforeunload` handler with it, with no way to opt out. DuelTastic has had that since 2026-11-06.
+- **Dev dependency:** `expo-linking` ~58.0.17 (SDK 58's), which `expo-router/testing-library` needs; it's an app's own dependency already, so not a peer.
+- Tests: `backBlock.test.tsx` runs the hook under expo-router's real in-memory router (`expo-router/testing-library`'s `renderRouter`), not a stand-in for `usePreventRemove` (DuelTastic's first test stubbed it, which is why the Quit bug got through). Android's back is played through a recording `BackHandler` (React Native's is a no-op off Android; the router's container listens to it and dispatches a go-back); the router's `back()` stands in for the browser's back, which goes through the same removal. Cases: Android's and the router's back open Quit Match? and stay; Quit leaves; Cancel stays and the next back asks again; the chip and both backs leave at once when nothing is held; no console warning or error in any case. Four fail with the block off, and the Quit case fails with the `repeat` branch taken out.
+- **Checked** in PuckTastic and DuelTastic with a packed tarball (their suites and `tsc`), and on PuckTastic's web dev server with the browser's back (Paddles against the CPU, its shared paddle screen: Quit Match? at 0-2 with the address kept on `/play/paddles`, asked again after Cancel, Quit to the loadout, and at Game Over straight to the loadout; Air Hockey at 0-0 straight to the loadout). Not on a device: no Android device or emulator run.

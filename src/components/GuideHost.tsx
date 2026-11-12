@@ -53,8 +53,9 @@ export function GuideHost({ children }: Props) {
   const seenVersion = useSelector((state: ShellState) => (packGuide ?? gameGuide)?.selectVersionSeen(state) ?? 0)
   const dispatch = useDispatch()
 
-  // The seat-2 choice the cards describe: the one the player last picked, the CPU in a game that has
-  // no room for it (a saved 'nobody' in a game without a solo mode), or nobody in a game for one.
+  // The seat-2 choice the cards describe: the one the player last picked, or where the game doesn't
+  // offer it the CPU (a saved 'nobody' in a game without a solo mode) or, in a game with no CPU, its
+  // first choice; nobody in a game for one.
   const mode = roundModeFor(seatTwoFor(seatTwo, game?.seatTwo))
   const steps = useMemo(() => (packGuide ? packGuide.getSteps({ touch }) : gameGuide ? gameGuide.getSteps(input, { touch, mode }) : []), [packGuide, gameGuide, input, touch, mode])
   const onSeen = useCallback(
