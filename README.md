@@ -119,7 +119,7 @@ PuckTastic and DuelTastic draw what they always did:
 | `useScreenOptions?` | A hook returning stack screen options (`StackScreenOptions`), merged after the shell's own (a status bar style of the pack's own, Reduce Motion's crossfade). The shell's already follow the app's theme, and stay dark over a `Backdrop`. |
 | `useFeedbackSounds?` | A hook returning the two sounds every button plays (`FeedbackSounds`: `selection`, `notification`), in place of the shell's two wavs. |
 | `Toaster?` | The pack's own toaster, drawn in a frame over the whole app (inside the safe area) in place of the shell's. The toast provider is given no Paper, so nothing portals it out of the frame. |
-| `edgeGuard?` | `false` leaves Edge Guard out of Settings (no edge controls, no Edge Guard plugin). |
+| `edgeGuard?` | `false` leaves Edge Guard out of Settings (no edge controls, no Edge Guard plugin), and out of the play screens' options on Android. |
 | `seatTheme?` | `(colors, dark) => ({ color, harmony })`: the theme the seats' colors make (a muted seed from seat 1's color), applied whenever they or dark mode change and as a fresh install's theme, in place of a triad of the raw colors. With it, `useSeatColors` reads each seat's color from where it's remembered (`seatColors`) rather than from the theme. |
 | `previewColor?` | `(hex, dark) => string`: how every profile color is drawn (the seat buttons and their swatches on Home and in the loadouts, a loadout's Ready button and seat controls, each `ProfileChip`), mounted as `@tastic/profile`'s `ProfileColorProvider`. Saved colors stay as picked. |
 | `guide?` | The pack's own How to Play (`PackGuide`: `version`, `selectVersionSeen`, `markSeen`, `getSteps({ touch })`), for cards that teach every game at once: shown on Home's first launch (never while a cold launch resumes a game), replayed from Home's Settings, never in a play screen. Its seen version is a key of the pack's own. |
@@ -268,7 +268,7 @@ became a package (the lower of the two where they differ).
 | `@tastic/profile` | >=0.16.2 | profiles, the seat buttons, seat colors |
 | `@tastic/achievements` | >=0.6.0 | `createGameStats`, `forgetProfileAchievements` |
 | `@tastic/split-screen` | >=0.5.5 | the 2 Player loadout's two halves |
-| `@tastic/edge-guard` | >=0.1.5 | Edge Guard during play |
+| `@tastic/edge-guard` | >=0.1.5 | Edge Guard during play (`useEdgeGestureGuard` on iOS, `edgeGuardScreenOptions` on Android) |
 
 The two UI sounds every button plays (`assets/sounds/select.wav` and `notification.wav`) ship with the
 package.

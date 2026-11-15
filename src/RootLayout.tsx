@@ -2,6 +2,7 @@ import { useAutoPaperTheme } from '@rific/auto-paper'
 import { useHapticSettings } from '@rific/feedback-press'
 import { Toaster, ToastProvider } from '@rific/toaster'
 import { useThemedRootBackground } from '@tastic/core'
+import { edgeGuardScreenOptions } from '@tastic/edge-guard'
 import { RotatedFrame } from '@tastic/hud/chrome'
 import { ProfileColorProvider } from '@tastic/profile'
 import * as Haptics from 'expo-haptics'
@@ -19,6 +20,7 @@ import { Providers } from './components/Providers'
 import { Theme } from './components/Theme'
 import { UpdateDialog } from './components/UpdateDialog'
 import { WindowControlsInsets } from './components/WindowControlsInsets'
+import { useAppSettings } from './hooks/useAppSettings'
 import { LastActiveGameProvider } from './hooks/useLastActiveGame'
 import { ProfilesProvider, useProfiles } from './hooks/useProfiles'
 import { PackProvider, usePack } from './PackContext'
@@ -44,6 +46,13 @@ import type { PackDefinition, PackGameDefinition } from './types'
 // auto-paper's Provider statusBar={false}). A play screen hides the bar for the whole round (a screen's
 // own options win over screenOptions); index is listed first so it stays the stack's first route. A
 // game with keepStatusBar (Solitaire's) keeps the stack's bar instead.
+//
+// Edge Guard's Android half rides on the same options: with it on, @tastic/edge-guard's
+// edgeGuardScreenOptions hides both bars on a play screen in sticky immersive mode, so a swipe from
+// any edge only brings them back for a moment (iOS's half is Providers' EdgeGuardBridge). For the whole
+// play screen, not just a live round: hiding a bar changes the safe area, so flipping it as a round
+// starts or pauses would resize anything a game lays out from the insets mid-match. On Android it
+// hides the status bar of a keepStatusBar game too, since a visible one pulls the shade in one swipe.
 const PLAY_OPTIONS = { statusBarHidden: true }
 const KEEP_STATUS_BAR_OPTIONS = {}
 
@@ -79,12 +88,16 @@ function AppStack() {
   // the outgoing screen opaque for ~450ms while the new one slides over it, which would show Home
   // straight through a transparent play screen. iOS keeps its own push.
   const backdropOptions = Backdrop ? { contentStyle: TRANSPARENT_CONTENT, animation: Platform.select({ android: 'fade' as const }) } : undefined
+  const { edgeGuard = true } = pack
+  const { deferBottomEdgeGestures } = useAppSettings().settings
+  const edgeGuardOptions = useMemo(() => edgeGuardScreenOptions(edgeGuard && deferBottomEdgeGestures), [edgeGuard, deferBottomEdgeGestures])
   const playOptions = useCallback(
     ({ route }: { route: { params?: object } }) => {
       const id = (route.params as { game?: string } | undefined)?.game
-      return pack.games.some((g) => g.id === id && g.keepStatusBar) ? KEEP_STATUS_BAR_OPTIONS : PLAY_OPTIONS
+      const statusBarOptions = pack.games.some((g) => g.id === id && g.keepStatusBar) ? KEEP_STATUS_BAR_OPTIONS : PLAY_OPTIONS
+      return { ...statusBarOptions, ...edgeGuardOptions }
     },
-    [pack.games]
+    [pack.games, edgeGuardOptions]
   )
   const navigationBackground = Backdrop ? TRANSPARENT_CONTENT.backgroundColor : rootBackground.contentStyle.backgroundColor
   const navigationTheme = useMemo(() => {

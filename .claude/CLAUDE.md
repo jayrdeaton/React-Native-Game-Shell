@@ -610,3 +610,25 @@ Audit F093, from PuckTastic's Play Store checklist: during a match, Android's ha
 - **Dev dependency:** `expo-linking` ~58.0.17 (SDK 58's), which `expo-router/testing-library` needs; it's an app's own dependency already, so not a peer.
 - Tests: `backBlock.test.tsx` runs the hook under expo-router's real in-memory router (`expo-router/testing-library`'s `renderRouter`), not a stand-in for `usePreventRemove` (DuelTastic's first test stubbed it, which is why the Quit bug got through). Android's back is played through a recording `BackHandler` (React Native's is a no-op off Android; the router's container listens to it and dispatches a go-back); the router's `back()` stands in for the browser's back, which goes through the same removal. Cases: Android's and the router's back open Quit Match? and stay; Quit leaves; Cancel stays and the next back asks again; the chip and both backs leave at once when nothing is held; no console warning or error in any case. Four fail with the block off, and the Quit case fails with the `repeat` branch taken out.
 - **Checked** in PuckTastic and DuelTastic with a packed tarball (their suites and `tsc`), and on PuckTastic's web dev server with the browser's back (Paddles against the CPU, its shared paddle screen: Quit Match? at 0-2 with the address kept on `/play/paddles`, asked again after Cancel, Quit to the loadout, and at Game Over straight to the loadout; Air Hockey at 0-0 straight to the loadout). Not on a device: no Android device or emulator run.
+
+## Edge Guard on Android (2026-11-14)
+
+Jay wanted Edge Guard on Android too. `@tastic/edge-guard` gained `edgeGuardScreenOptions(enabled)`
+(sticky immersive mode through react-native-screens' `navigationBarHidden` and `statusBarHidden`; see its
+CLAUDE.md, "Android"), and hud shows the row on Android as well as iOS (its CLAUDE.md, "Edge Guard on
+Android").
+
+- **`AppStack`'s play options** are the status bar options as before, then
+  `edgeGuardScreenOptions(edgeGuard && appSettings.deferBottomEdgeGestures)` spread over them. On iOS
+  that adds nothing (the swizzle in `Providers`' `EdgeGuardBridge` is iOS's half, unchanged). On Android
+  with the setting on, both bars hide for the whole play screen, a `keepStatusBar` game's status bar
+  too; off, `navigationBarHidden: false` and the game's own status bar.
+- **The whole play screen, not `liveplay.activelyPlaying`** (Jay's call): hiding a bar changes the safe
+  area, so following the live round would resize a game laid out from the insets every time a round
+  starts or pauses. The bars go as the screen opens, with the status bar, and two swipes are needed
+  while paused or between rounds too.
+- **Not released:** rides on the unreleased edge-guard export; the edge-guard peer floor and dev
+  dependency go up to the release that adds `edgeGuardScreenOptions`.
+- Tests: `packRoot`'s "Edge Guard on Android" (both bars on with the setting, a `keepStatusBar` game
+  included; the navigation bar kept and the game's status bar left alone with it off; nothing for a pack
+  with `edgeGuard: false`) and iOS adding nothing.

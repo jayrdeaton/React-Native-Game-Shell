@@ -1,12 +1,13 @@
 import { render, screen, within } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
-import { Text, View } from 'react-native'
+import { Platform, Text, View } from 'react-native'
 import * as RNPaper from 'react-native-paper'
 import { Provider as ReduxProvider } from 'react-redux'
 import type { Persistor } from 'redux-persist'
 
 import { SettingsDialog } from '../components/SettingsDialog'
 import { PackProvider } from '../PackContext'
+import { appSettingsActions } from '../redux/appSettingsSlice'
 import { RootLayout } from '../RootLayout'
 import { standInGame, standInPack, standInStore } from '../testUtils/pack'
 import type { PackDefinition, StackScreenOptions } from '../types'
@@ -184,6 +185,54 @@ describe("the pack's root pieces", () => {
 
     expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true })
     expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual({})
+  })
+
+  // Edge Guard's Android half: sticky immersive on a play screen (see RootLayout's PLAY_OPTIONS).
+  describe('Edge Guard on Android', () => {
+    async function renderWithEdgeGuard(on: boolean, overrides: Partial<PackDefinition> = {}) {
+      const pack = standInPack([pong, klondike], overrides)
+      const store = standInStore(pack)
+      store.dispatch(appSettingsActions.initialize({ deferBottomEdgeGestures: on }))
+      await render(<RootLayout pack={pack} store={store as never} persistor={{} as Persistor} />)
+    }
+
+    let platform: jest.ReplaceProperty<typeof Platform.OS>
+    beforeEach(() => {
+      platform = jest.replaceProperty(Platform, 'OS', 'android')
+    })
+
+    afterEach(() => {
+      platform.restore()
+    })
+
+    it('hides both bars on every play screen while it is on, a game that keeps its status bar too', async () => {
+      await renderWithEdgeGuard(true)
+
+      expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: true })
+      expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: true })
+    })
+
+    it('keeps the navigation bar while it is off, and leaves the status bar to the game', async () => {
+      await renderWithEdgeGuard(false)
+
+      expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: false })
+      expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual({ navigationBarHidden: false })
+    })
+
+    it('hides nothing for a pack with edgeGuard false, even with the setting left on', async () => {
+      await renderWithEdgeGuard(true, { edgeGuard: false })
+
+      expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: false })
+    })
+  })
+
+  it('adds nothing to the play options on iOS, where Edge Guard is the swizzle', async () => {
+    const pack = standInPack([pong, klondike])
+    const store = standInStore(pack)
+    store.dispatch(appSettingsActions.initialize({ deferBottomEdgeGestures: true }))
+    await render(<RootLayout pack={pack} store={store as never} persistor={{} as Persistor} />)
+
+    expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true })
   })
 
   it("mounts the pack's own Provider around the stack", async () => {
