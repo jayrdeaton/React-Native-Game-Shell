@@ -1,5 +1,5 @@
 import { usePreventRemove } from 'expo-router'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { safeBack } from '../navigation'
 
@@ -13,6 +13,11 @@ import { safeBack } from '../navigation'
 // calls this after that hook, with the same test it hands useQuitConfirmation. Off at Game Over, so
 // a back there leaves at once, as the chip does.
 //
+// `leave` is where `quit` goes: safeBack unless the game says otherwise. A game whose Quit Match? can
+// be opened from more than one place (CardTastic's tables: a back, or their Home button, which goes
+// to Home past the setup screen) passes a function that reads which one opened it. It's read when
+// `quit` runs, so it can change from render to render.
+//
 // The block stops every navigation off the screen while it's on, Quit's own included, so `quit` marks
 // the way out first and the block lets that one through with `repeat` (expo-router's way to carry on
 // with a navigation it stopped). The block goes off in the same handler as `repeat`, the order
@@ -22,9 +27,13 @@ import { safeBack } from '../navigation'
 //
 // While it's on, the web also asks before the page unloads (expo-router's usePreventRemove adds a
 // beforeunload handler with it).
-export function useBackBlock(held: boolean, onHeld: () => void): () => void {
+export function useBackBlock(held: boolean, onHeld: () => void, leave: () => void = safeBack): () => void {
   const leavingRef = useRef(false)
   const [leaving, setLeaving] = useState(false)
+  const leaveRef = useRef(leave)
+  useEffect(() => {
+    leaveRef.current = leave
+  })
   usePreventRemove(held && !leaving, ({ repeat }) => {
     if (leavingRef.current) {
       setLeaving(true)
@@ -33,6 +42,6 @@ export function useBackBlock(held: boolean, onHeld: () => void): () => void {
   })
   return useCallback(() => {
     leavingRef.current = true
-    safeBack()
+    leaveRef.current()
   }, [])
 }

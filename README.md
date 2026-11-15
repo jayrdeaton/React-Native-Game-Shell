@@ -239,6 +239,11 @@ const quit = useBackBlock(hasProgress, requestBack)
   in), so a game whose progress comes from a state hook that itself needs Quit Match?'s `paused` calls
   this after that hook, and mirrors the value into the getter it gives `useQuitConfirmation`.
 - Off when there's nothing to lose (0-0, Game Over), so a back there leaves at once, as the chip does.
+- `quit` goes back (`safeBack`) unless a third argument, `leave`, says where: `useBackBlock(held,
+  onHeld, leave)`. For a Quit Match? that more than one thing opens, such as a back and a Home button
+  that goes to Home past the screen underneath, pass a `leave` that reads which one opened it
+  (`() => router.dismissTo('/')` for Home). It's read when `quit` runs, so it can change between
+  renders.
 - While it's on, the web also asks before the page unloads (expo-router's `usePreventRemove` adds a
   `beforeunload` handler with it). iOS's swipe back is off on every screen anyway.
 

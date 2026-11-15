@@ -121,6 +121,70 @@ describe('useBackBlock during a match', () => {
   })
 })
 
+// A play screen whose Quit Match? also opens from a Home button that goes to Home, past the screen
+// under it (CardTastic's tables, over their setup screen): `leave` reads which one opened it.
+function HomeButtonPlayScreen() {
+  const [confirmVisible, setConfirmVisible] = useState(false)
+  const [toHome, setToHome] = useState(false)
+  const ask = (home: boolean) => {
+    setToHome(home)
+    setConfirmVisible(true)
+  }
+  const quit = useBackBlock(mockHeld, () => ask(false), toHome ? () => router.dismissTo('/') : undefined)
+  return (
+    <View>
+      <Text>Match</Text>
+      <Pressable accessibilityLabel='Home' onPress={() => (mockHeld ? ask(true) : router.dismissTo('/'))} />
+      {confirmVisible && (
+        <View>
+          <Text>Quit Match?</Text>
+          <Pressable accessibilityLabel='Quit' onPress={quit} />
+        </View>
+      )}
+    </View>
+  )
+}
+
+const SETUP_ROUTES = {
+  index: () => <Text>Home</Text>,
+  'loadout/[game]': () => <Text>Setup</Text>,
+  'play/[game]': HomeButtonPlayScreen
+}
+
+async function openMatchFromSetup() {
+  const rendered = await renderRouter(SETUP_ROUTES, { initialUrl: '/' })
+  await act(async () => router.push('/loadout/ginrummy'))
+  await act(async () => router.push('/play/ginrummy'))
+  expect(rendered.getPathname()).toBe('/play/ginrummy')
+  return rendered
+}
+
+describe('useBackBlock with a way out of its own', () => {
+  it("goes where `leave` says on Quit: the Home button's Quit Match? leaves for Home", async () => {
+    const rendered = await openMatchFromSetup()
+    await fireEvent.press(screen.getByLabelText('Home'))
+    expect(screen.getByText('Quit Match?')).toBeTruthy()
+    await fireEvent.press(screen.getByLabelText('Quit'))
+    expect(rendered.getPathname()).toBe('/')
+    expect(screen.getByText('Home')).toBeTruthy()
+  })
+
+  it("still goes back on Quit when Android's back opened it", async () => {
+    const rendered = await openMatchFromSetup()
+    await pressAndroidBack()
+    expect(screen.getByText('Quit Match?')).toBeTruthy()
+    await fireEvent.press(screen.getByLabelText('Quit'))
+    expect(rendered.getPathname()).toBe('/loadout/ginrummy')
+  })
+
+  it("stops the Home button's own navigation while held, so it can't skip Quit Match?", async () => {
+    const rendered = await openMatchFromSetup()
+    await act(async () => router.dismissTo('/'))
+    expect(screen.getByText('Quit Match?')).toBeTruthy()
+    expect(rendered.getPathname()).toBe('/play/ginrummy')
+  })
+})
+
 describe('useBackBlock at Game Over', () => {
   it("leaves at once on Android's back", async () => {
     mockHeld = false
