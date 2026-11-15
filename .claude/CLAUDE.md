@@ -628,8 +628,8 @@ Android").
   area, so following the live round would resize a game laid out from the insets every time a round
   starts or pauses. The bars go as the screen opens, with the status bar, and two swipes are needed
   while paused or between rounds too.
-- **Not released:** rides on the unreleased edge-guard export; the edge-guard peer floor and dev
-  dependency go up to the release that adds `edgeGuardScreenOptions`.
+- **Needs `@tastic/edge-guard` 0.2.0** (released 2026-11-15), the release that adds
+  `edgeGuardScreenOptions`: the peer floor and the dev dependency went up to it.
 - Tests: `packRoot`'s "Edge Guard on Android" (both bars on with the setting, a `keepStatusBar` game
   included; the navigation bar kept and the game's status bar left alone with it off; nothing for a pack
   with `edgeGuard: false`) and iOS adding nothing.

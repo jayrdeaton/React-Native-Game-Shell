@@ -273,7 +273,7 @@ became a package (the lower of the two where they differ).
 | `@tastic/profile` | >=0.16.2 | profiles, the seat buttons, seat colors |
 | `@tastic/achievements` | >=0.6.0 | `createGameStats`, `forgetProfileAchievements` |
 | `@tastic/split-screen` | >=0.5.5 | the 2 Player loadout's two halves |
-| `@tastic/edge-guard` | >=0.1.5 | Edge Guard during play (`useEdgeGestureGuard` on iOS, `edgeGuardScreenOptions` on Android) |
+| `@tastic/edge-guard` | >=0.2.0 | Edge Guard during play (`useEdgeGestureGuard` on iOS, `edgeGuardScreenOptions` on Android) |
 
 The two UI sounds every button plays (`assets/sounds/select.wav` and `notification.wav`) ship with the
 package.
