@@ -394,3 +394,7 @@ what the shell started using (noted in the table).
 
 The two UI sounds every button plays (`assets/sounds/select.wav` and `notification.wav`) ship with the
 package. They play through `@rific/feedback-press/audio`'s `useAudioPool`, which imports `expo-audio`.
+
+---
+
+Made by [Infinite Token](https://www.infinitetoken.com), the team behind [Lumber](https://lumber.infinitetoken.com): end-to-end encrypted logging.
