@@ -32,7 +32,7 @@ jest.mock('@tastic/hud/chrome', () => {
       mockStatsScreen(props)
       return <RNView testID='stats'>{children}</RNView>
     },
-    RotatedFrame: ({ children, ...props }: { children: ReactNode }) => {
+    ScreenFrame: ({ children, ...props }: { children: ReactNode }) => {
       mockFrame(props)
       return <RNView testID='frame'>{children}</RNView>
     }
@@ -266,8 +266,7 @@ describe('the screen', () => {
   it('keeps its reset confirm in the frame and its column capped in the wide layout', async () => {
     await renderStats()
 
-    expect(mockFrame).toHaveBeenLastCalledWith(expect.objectContaining({ rotatedSafeArea: true, portalHost: true, maxContentWidth: 640 }))
-    expect(lastStatsScreen().rotation).toBe(0)
+    expect(mockFrame).toHaveBeenLastCalledWith(expect.objectContaining({ portalHost: true, maxContentWidth: 640 }))
   })
 
   it("draws over the pack's Backdrop in its foreground, its tabs and pickers on a surface", async () => {

@@ -222,7 +222,7 @@ same screens, but for six fixes Solitaire had already made to the same screens, 
   How to Play and the stack. `useScreenOptions` and `useFeedbackSounds` are hooks on the pack, called
   unconditionally through a default (`noScreenOptions`, `useShellFeedbackSounds`), since the pack never
   changes while it runs. `keepStatusBar` makes the play route's options a function of its `game` param.
-  A pack `Toaster` renders inline in an absolute-fill, pass-through `RotatedFrame` (Solitaire's
+  A pack `Toaster` renders inline in an absolute-fill, pass-through `ScreenFrame` (Solitaire's
   `RootOverlays`), so `ToastProvider` gets no `paper` then: with Paper the toaster portals out of the
   frame. `edgeGuard: false` leaves out the two props that make hud draw the row.
 - **`seatTheme`, `previewColor` (item 5).** With a seatTheme, `useSeatColors` returns each seat's
@@ -282,9 +282,9 @@ frame's first child it was under the whole scroller, which on a phone took a pre
 zIndex 5 over the grid in the wide layout; seat 1's menu closes on every turn and resize, not only a
 switch of layout; both of Home's scrollers are auto-paper's `FadingScrollView`; the stats screen sits
 in `StatsPressAway` (a responder outside the frame that takes a press nothing else claims, so the header
-and margins close a menu too) and hud's `RotatedFrame` (insets turned onto its edges, the reset confirm
-in its own Portal.Host at rotation 0, the column capped at 640pt in the wide layout); and Profiles turns
-with the phone in the same frame, roster capped at 640pt.
+and margins close a menu too) and hud's `ScreenFrame` (`RotatedFrame` before hud 0.34: the reset confirm
+in its own Portal.Host, the column capped at 640pt in the wide layout); and Profiles sits in the same
+frame, roster capped at 640pt.
 
 ## The loadout on a felt (0.3.0, 2026-11-04)
 
@@ -406,7 +406,7 @@ Needs `@tastic/core` 0.15 (its seat mode is the window's shape on every platform
 - **`GameDefinition.sideBySideWhenWide`** replaces `twoPlayerSeats`: the 2 Player loadout seats its players side by side (P1 on the left) in a window wider than tall; unset, face to face in any window. With one person the panels follow the window. The loadout reads `useOrientationState().orientationMode`, hands `useDualZoneLayout` `p1OnRight` false, resolved and not upside down, and its P2 press-away zone is the right half side by side. Old `faceToFaceOnWeb: false` is `sideBySideWhenWide: true` (Snake, AirHockey, Paddles, Breaker, Gin Rummy, Four Crowns); `followUpsideDown` has no replacement.
 - **Plain frames:** Home's and the loadout's `FakeLandscapeView` are a plain `View` (`styles.frame`); `homeLayout` reads `useWindowDimensions()` and `useSafeAreaInsets()`; the loadout reads plain insets. Home's popover still closes on every window change (`homeOptions.test.tsx` now changes the window instead of the rotation).
 - **Status bar:** the stack sets `statusBarStyle` from the theme itself, in place of core's `useRotationAwareStatusBar`. A play screen still hides the bar for the round unless the game has `keepStatusBar`.
-- **Kept:** hud's `RotatedFrame` around the toaster, the stats screen and Profiles, for its safe-area hand-off, portal host and column cap; at rotation 0 it turns nothing. `usePickerAlign` stays, though its reason (a turned frame) is gone.
+- **Kept:** hud's `RotatedFrame` around the toaster, the stats screen and Profiles, for its safe-area hand-off, portal host and column cap; at rotation 0 it turns nothing. (Shell 0.11 moved to its successor, `ScreenFrame`, which has the portal host and column cap; at rotation 0 the safe-area hand-off passed the insets through unchanged.) `usePickerAlign` stays, though its reason (a turned frame) is gone.
 - **Each pack, on bumping:** drop `twoPlayerSeats` (set `sideBySideWhenWide: true` where `faceToFaceOnWeb` was false), `portraitWhileKeyboard`, any `rotation` read from the loadout's props or passed to `SettingsDialog`; take the `@tastic/core` plugin out of `app.json` and set `UIViewControllerBasedStatusBarAppearance: true` in `ios.infoPlist`; make a new native build.
 - **Dependencies:** dev `@tastic/core` ^0.15.0 (peer `>=0.15.0`), `expo-sensors` removed, Expo SDK 58 patch updates (`expo` 58.0.23, `react-native` 0.88.1, `expo-router` 58.0.30, `react-native-safe-area-context` 5.11.1 and the rest), `tsup` ^9.0.0, `@reduxjs/toolkit` 2.14. Not moved: what SDK 58 pins (React 19.3.0, gesture-handler 3.3, worklets, async-storage 2.2), Babel 8, ESLint 10, TypeScript 7.
 - Tests: `loadoutSeats.test.tsx` (new: face to face, side by side when wide, one person following the window), and the lock, keyboard and `twoPlayerSeats` cases out of `appSettingsSlice`, `packRoot`, `homeScreen` and `seatlessGames`.

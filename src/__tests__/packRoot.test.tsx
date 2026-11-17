@@ -82,9 +82,9 @@ jest.mock('@tastic/hud/chrome', () => {
   const { View: RNView } = require('react-native')
   return {
     ...jest.requireActual('@tastic/hud/chrome'),
-    RotatedFrame: ({ children, ...props }: { children: ReactNode }) => {
+    ScreenFrame: ({ children, ...props }: { children: ReactNode }) => {
       mockFrame(props)
-      return <RNView testID='rotated-frame'>{children}</RNView>
+      return <RNView testID='screen-frame'>{children}</RNView>
     },
     BaseSettingsDialog: (props: object) => {
       mockBaseSettings(props)
@@ -249,12 +249,12 @@ describe("the pack's root pieces", () => {
     expect(within(screen.getByTestId('pong-provider')).getByTestId('stack')).toBeTruthy()
   })
 
-  it("draws the pack's Toaster in a frame turned with the phone, with no Paper to portal it out", async () => {
+  it("draws the pack's Toaster in a pass-through frame, with no Paper to portal it out", async () => {
     const Toaster = () => <Text testID='pack-toaster'>toasts</Text>
     await renderRoot({ Toaster })
 
-    expect(within(screen.getByTestId('rotated-frame')).getByTestId('pack-toaster')).toBeTruthy()
-    expect(mockFrame).toHaveBeenLastCalledWith(expect.objectContaining({ rotatedSafeArea: true, passThrough: true }))
+    expect(within(screen.getByTestId('screen-frame')).getByTestId('pack-toaster')).toBeTruthy()
+    expect(mockFrame).toHaveBeenLastCalledWith(expect.objectContaining({ passThrough: true }))
     expect(screen.queryByTestId('shell-toaster')).toBeNull()
     expect(mockToastProvider.mock.lastCall![0].paper).toBeUndefined()
   })

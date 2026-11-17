@@ -297,7 +297,7 @@ scroller, so a press on a row played the game), seat 1's menu closes on every ch
 Home's scrollers fade out at an edge with more past it (auto-paper's `FadingScrollView`), a press
 anywhere on the stats screen (its header and margins too) closes a picker's menu, the stats screen's
 column is capped at 640pt in the wide layout, and Profiles' roster is capped at 640pt in the wide
-layout (hud's `RotatedFrame`, which nothing turns any more). Every hud import goes through `@tastic/hud/chrome`,
+layout (hud's `ScreenFrame`, `RotatedFrame` before hud 0.34). Every hud import goes through `@tastic/hud/chrome`,
 `/guide` or `/lobby`, so an app with no Skia can install the shell; a pack's own imports don't change.
 The shell's routes are handed to expo-router as plain `Href`s, so an app with typed routes type-checks
 the shell before its own routes match.
@@ -386,7 +386,7 @@ what the shell started using (noted in the table).
 | `@rific/feedback-press` | >=0.13.1 | haptic and sound settings, the UI sounds |
 | `@rific/toaster` | >=0.10.1 | toasts |
 | `@tastic/core` | >=0.16.0 | the seat mode from the window's shape, the root background, the test for a computer behind `useAtComputer` (0.16.0's `useIsTouchPrimaryDevice`) |
-| `@tastic/hud` | >=0.29.0 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0; 0.27.1's options for a pack drawn on its own backdrop; 0.28.0's Ready pill; 0.29.0's leading Settings sections), How to Play |
+| `@tastic/hud` | >=0.34.0 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0; 0.27.1's options for a pack drawn on its own backdrop; 0.28.0's Ready pill; 0.29.0's leading Settings sections), How to Play, and `ScreenFrame` around the stats screen, Profiles and the toaster (0.34.0, where `RotatedFrame` became `ScreenFrame`) |
 | `@tastic/profile` | >=0.18.0 | profiles and the shared roster, the seat buttons, seat colors, the dividers in player 1's opponent menu (0.18.0's `dividerBefore`) |
 | `@tastic/achievements` | >=0.6.0 | `createGameStats`, `forgetProfileAchievements` |
 | `@tastic/split-screen` | >=0.5.5 | the 2 Player loadout's two halves |

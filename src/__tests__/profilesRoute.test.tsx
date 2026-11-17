@@ -6,9 +6,8 @@ import { ProfilesRoute } from '../screens/ProfilesRoute'
 import { shellWrapper, standInGame, standInPack, standInStore } from '../testUtils/pack'
 import type { PackDefinition } from '../types'
 
-// The Profiles screen turned with the phone in every pack (hud's RotatedFrame: the insets remapped onto
-// its edges for ProfilesManager, the delete confirm portaled into the frame, the roster capped in the
-// wide layout), a new profile's color, the swatch placed by the pack's usePickerAlign, and the screen
+// The Profiles screen in every pack (hud's ScreenFrame: the delete confirm portaled into the frame, the
+// roster capped in the wide layout), a new profile's color, the swatch placed by the pack's usePickerAlign, and the screen
 // drawn over a pack's Backdrop. The frame and
 // @tastic/profile's screen record what they're handed.
 
@@ -19,7 +18,7 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn(),
 jest.mock('../hooks/useProfiles', () => ({ useProfiles: () => ({ profiles: [], createProfile: jest.fn(), updateProfile: jest.fn(), deleteProfile: jest.fn() }) }))
 jest.mock('@tastic/hud/chrome', () => ({
   ...jest.requireActual('@tastic/hud/chrome'),
-  RotatedFrame: ({ children, ...props }: { children: ReactNode }) => {
+  ScreenFrame: ({ children, ...props }: { children: ReactNode }) => {
     mockFrame(props)
     return children
   }
@@ -47,7 +46,7 @@ describe('the Profiles screen', () => {
   it('turns with the phone, its insets and delete confirm in the frame, its roster capped in the wide layout', async () => {
     await renderProfiles()
 
-    expect(mockFrame).toHaveBeenLastCalledWith(expect.objectContaining({ rotatedSafeArea: true, portalHost: true, maxContentWidth: 640 }))
+    expect(mockFrame).toHaveBeenLastCalledWith(expect.objectContaining({ portalHost: true, maxContentWidth: 640 }))
   })
 
   it("starts a new profile on auto-paper's first swatch, and on the pack's own color where it sets one", async () => {

@@ -1,5 +1,5 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
-import { BaseStatsScreen, type PopoverHost, PressAwayOverlay, RotatedFrame, usePopoverHost } from '@tastic/hud/chrome'
+import { BaseStatsScreen, type PopoverHost, PressAwayOverlay, ScreenFrame, usePopoverHost } from '@tastic/hud/chrome'
 import { getOptionPickerContentSize, OptionPicker, type OptionPickerOption } from '@tastic/profile'
 import { type ReactNode, useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
@@ -50,15 +50,15 @@ const STATS_MAX_WIDTH = 640
 // can't be told apart. A pack for one player at a time (PackDefinition.guestStats) keeps a guest's
 // stats under GUEST_PLAYER_ID, offers Guest in the picker and opens on whoever is in seat 1.
 //
-// In hud's RotatedFrame, which nothing turns since @tastic/core 0.15: it hands the screen the safe-area
-// insets, hosts the reset confirm's portal inside the frame, and caps the column in the wide layout.
+// In hud's ScreenFrame: it hosts the reset confirm's portal inside the frame, and caps the column in the
+// wide layout.
 export function StatsScreen() {
   const pickerHost = usePopoverHost()
   return (
     <StatsPressAway host={pickerHost}>
-      <RotatedFrame rotatedSafeArea portalHost maxContentWidth={STATS_MAX_WIDTH}>
+      <ScreenFrame portalHost maxContentWidth={STATS_MAX_WIDTH}>
         <StatsContent pickerHost={pickerHost} />
-      </RotatedFrame>
+      </ScreenFrame>
     </StatsPressAway>
   )
 }
@@ -85,7 +85,6 @@ const noPickerAlign = () => undefined
 function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
   const pack = usePack()
   const { dark, colors } = useAutoPaperTheme()
-  // Handed over by RotatedFrame's rotatedSafeArea.
   const insets = useSafeAreaInsets()
   const { profiles, lastSelected } = useProfiles()
   const dispatch = useDispatch()
@@ -130,7 +129,7 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
   const PackTabContent = packTab?.Content
 
   return (
-    <BaseStatsScreen title={title} onBack={safeBack} insets={insets} onReset={reset.onReset} resetLabel={reset.label} resetConfirmTitle={reset.title} resetConfirmBody={reset.body} fg={pack.foreground} bg={pack.Backdrop ? 'transparent' : undefined} rotation={0}>
+    <BaseStatsScreen title={title} onBack={safeBack} insets={insets} onReset={reset.onReset} resetLabel={reset.label} resetConfirmTitle={reset.title} resetConfirmBody={reset.body} fg={pack.foreground} bg={pack.Backdrop ? 'transparent' : undefined}>
       {/* Inside the page, not before it: BaseStatsScreen paints an opaque full-screen container that
       would hide a tap catcher placed underneath it. Over the stat sections and under the open
       filters (pressAway's zIndex sits below filtersOpen's), so a tap anywhere on the page but a

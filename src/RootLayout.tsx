@@ -3,7 +3,7 @@ import { useHapticSettings } from '@rific/feedback-press'
 import { Toaster, ToastProvider } from '@rific/toaster'
 import { useThemedRootBackground } from '@tastic/core'
 import { edgeGuardScreenOptions } from '@tastic/edge-guard'
-import { RotatedFrame } from '@tastic/hud/chrome'
+import { ScreenFrame } from '@tastic/hud/chrome'
 import { ProfileColorProvider } from '@tastic/profile'
 import * as Haptics from 'expo-haptics'
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router'
@@ -152,28 +152,20 @@ function HapticGatedToastProvider({ children }: { children: ReactNode }) {
   )
 }
 
-function RotatingToaster() {
-  const renderFrame = useCallback(
-    (toasts: ReactNode) => (
-      <RotatedFrame rotatedSafeArea passThrough>
-        {toasts}
-      </RotatedFrame>
-    ),
-    []
-  )
+function FramedToaster() {
+  const renderFrame = useCallback((toasts: ReactNode) => <ScreenFrame passThrough>{toasts}</ScreenFrame>, [])
   return <Toaster historyButton={null} clearButton={null} limit={3} renderFrame={renderFrame} />
 }
 
-// The pack's own toaster (PackDefinition.Toaster), laid over the whole app in hud's RotatedFrame, which
-// nothing turns since @tastic/core 0.15: passThrough, so only a toast claims a touch over the stack, and
-// rotatedSafeArea, so the toaster reads the safe area. The absoluteFill wrapper takes the frame out of
-// the layout beside the stack.
+// The pack's own toaster (PackDefinition.Toaster), laid over the whole app in hud's ScreenFrame:
+// passThrough, so only a toast claims a touch over the stack. The absoluteFill wrapper takes the frame
+// out of the layout beside the stack.
 function PackToaster({ Toaster: PackToasterComponent }: { Toaster: NonNullable<PackDefinition['Toaster']> }) {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents='box-none'>
-      <RotatedFrame rotatedSafeArea passThrough>
+      <ScreenFrame passThrough>
         <PackToasterComponent />
-      </RotatedFrame>
+      </ScreenFrame>
     </View>
   )
 }
@@ -234,7 +226,7 @@ export function RootLayout({ pack, store, persistor }: RootLayoutProps) {
                               {/* historyButton/clearButton off: there's no toast history to open, and a
                               control row for it above the toast stack would go nowhere. limit pins the
                               package's current default (3) so a future toaster release can't change it. */}
-                              {pack.Toaster ? <PackToaster Toaster={pack.Toaster} /> : <RotatingToaster />}
+                              {pack.Toaster ? <PackToaster Toaster={pack.Toaster} /> : <FramedToaster />}
                               <UpdateDialog />
                             </HapticGatedToastProvider>
                           </GatedApp>
