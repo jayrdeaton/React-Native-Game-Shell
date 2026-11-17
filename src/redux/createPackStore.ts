@@ -6,13 +6,6 @@ import type { PackDefinition, PackGameDefinition } from '../types'
 import lastActiveGame from './lastActiveGameSlice'
 import { createShellReducers } from './shellState'
 
-const hasError = (action: unknown): action is { error?: unknown } => typeof action === 'object' && action !== null && 'error' in action && Boolean(action.error)
-
-const errorMiddleware: Middleware = () => (next) => (action) => {
-  if (!hasError(action)) return next(action)
-  return action
-}
-
 export interface PackStoreConfig {
   // On web every Tastic app shares one origin (games.infinitetoken.com) and so one localStorage,
   // where AsyncStorage keeps this state under keyPrefix + 'root': the default prefix would make every
@@ -76,7 +69,7 @@ export function createPackStore(pack: PackStoreSource, { keyPrefix, migrate, bla
           ignoredPaths: [...serializableIgnoredPaths]
         }
       })
-      return defaultMiddleware.concat(errorMiddleware, ...middleware)
+      return defaultMiddleware.concat(...middleware)
     },
     reducer: persistedReducer
   })

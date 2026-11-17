@@ -28,12 +28,15 @@ package ecosystem, on [`@tastic/hud`](https://github.com/jayrdeaton/react-native
   middleware })` builds one persisted store from the shell's keys (theme, haptics, sound, Keep Awake,
   profiles, seat selection, seat colors, app settings, seat 2, the never-saved `liveplay`, and
   `lastActiveGame` in a pack with a resumable game), the pack's own `reducers` and every game's own
-  `reducers`.
-- **What a game builds on**: `createPlayerSettings` (its settings and controls, kept per player),
-  `createGameStats` (its stats and achievements), `createGameGuideSlice` (which version of its How to
-  Play a player has seen), `onProfileRemoved` (forget a deleted profile), `useActiveRound`,
-  `useProfiles`, `useSeatColors`, `SettingsDialog`, `safeBack`, `useBackBlock` (Android's and the
-  browser's back mid-match open Quit Match?) and `imageGameIcon`.
+  `reducers`. Each of the shell's keys exports its reducer, actions and defaults, and
+  `createShellReducers` builds them all (see [The store's keys](#the-stores-keys)).
+- **What a game builds on**: `createPlayerSettings` and `seatPlayerKey` (its settings and controls,
+  kept per player), `createGameStats` (its stats and achievements), `createGameGuideSlice` (which
+  version of its How to Play a player has seen), `onProfileRemoved` (forget a deleted profile),
+  `usePack` and `usePackGame`, `useActiveRound`, `useProfiles`, `useSeatColors`, `useOpponent`,
+  `useAppSettings`, `useGameGuide`, `useAtComputer`, `roundModeFor`, `humanSeatsFor`, `seatTwoFor`,
+  `MatchChips`, `SettingsDialog`, `safeBack`, `useBackBlock` (Android's and the browser's back
+  mid-match open Quit Match?) and `imageGameIcon` (see [Hooks and helpers](#hooks-and-helpers)).
 
 ## Install
 
@@ -123,7 +126,7 @@ PuckTastic and DuelTastic draw what they always did:
 | `seatTheme?` | `(colors, dark) => ({ color, harmony })`: the theme the seats' colors make (a muted seed from seat 1's color), applied whenever they or dark mode change and as a fresh install's theme, in place of a triad of the raw colors. With it, `useSeatColors` reads each seat's color from where it's remembered (`seatColors`) rather than from the theme. |
 | `previewColor?` | `(hex, dark) => string`: how every profile color is drawn (the seat buttons and their swatches on Home and in the loadouts, a loadout's Ready button and seat controls, each `ProfileChip`), mounted as `@tastic/profile`'s `ProfileColorProvider`. Saved colors stay as picked. |
 | `guide?` | The pack's own How to Play (`PackGuide`: `version`, `selectVersionSeen`, `markSeen`, `getSteps({ touch })`), for cards that teach every game at once: shown on Home's first launch (never while a cold launch resumes a game), replayed from Home's Settings, never in a play screen. Its seen version is a key of the pack's own. |
-| `guestLabel?`, `nullLabel?` | Seat 1's button on Home and in every loadout: the chip's label for a guest (default `'P1'`) and the guest row's in its menu. |
+| `guestLabel?`, `nullLabel?` | Seat 1's button on Home and in every loadout: the chip's label for a guest (default `'P1'`) and the guest row's in its menu. A 2 Player loadout's seat 2 button takes the same two (its guest default `'P2'`). |
 | `guestStats?` | The stats screen keeps a guest's stats under `GUEST_PLAYER_ID` (`'guest'`): a Guest entry between Everyone and the profiles once a profile exists, and the screen opens on seat 1's player. Without it the screen opens on Everyone, where guests count. |
 | `AchievementList?` | One achievement list across the pack's games, on the Achievements tab, with the game picker hidden there. |
 | `statsTabs?` | Tabs of the pack's own between Stats and Achievements (`PackStatsTab`: `value`, `label`, `Content`, handed both filters). With them every tab is as wide as its label, with no icons, so three fit a phone. |
@@ -136,8 +139,9 @@ PuckTastic and DuelTastic draw what they always did:
 ### `GameDefinition`
 
 Each game is one object: its `id`, `title`, `blurb` and `icon` (a component drawn in the seats'
-colors, or `imageGameIcon({ light, dark })` for a light and dark pair of pictures), its seat 2
-choices (`seatTwo`: `'cpu'`, `'person'`, `'nobody'`), whether 2 Player seats its players side by side
+colors, handed `GameIconProps`: `size`, `p1Color`, `p2Color` and `dark`; or `imageGameIcon({ light,
+dark })` for a light and dark pair of pictures), its seat 2 choices (`seatTwo`, each a `SeatTwo`: `'cpu'`,
+`'person'`, `'nobody'`), whether 2 Player seats its players side by side
 at a computer (`sideBySideAtComputer`) and in a wide window (`sideBySideWhenWide`), the store `reducers` it mounts, its root `Provider`, its `useLoadout(mode)`, its
 `PlayScreen`, its `StatsSections` and `AchievementList`, `resetStats`, and its How to Play `guide`.
 See `src/types.ts` for every field.
@@ -162,9 +166,29 @@ What a game can leave out or add, each optional, so a two-seat game sets none of
 A game never imports another game, and the shell never imports a game: games reach the shell only
 through the pack (`usePack()`).
 
+`useLoadout(mode)` returns the game's part of the loadout (`GameLoadout`), built from its own saved
+settings for the round `mode` seat 2 makes:
+
+| Field | |
+| --- | --- |
+| `roundSettings` | The settings the round plays with, committed (liveplay's `activeRound.settings`) once every human seat is Ready. The play screen reads them back with `useActiveRound`. |
+| `options` | `(props: LoadoutOptionsProps) => ReactNode`: the match-options row (board, rules, puck), drawn under the loadout's popover `host` in its colors (`accentColor`, `mutedColor`, `onAccentColor`, `dark`). `onRandomize` and `onReset` are undefined while the loadout folds them into its shared action band. |
+| `optionIds` | The popover ids the options row opens, so the loadout lifts the row while one is open. |
+| `randomize`, `reset` | The loadout's randomize and reset buttons. |
+| `seatControl` | `(seat, host, look) => ReactNode \| undefined`: a human seat's controls picker (shot style, keys) in `look`'s colors (`SeatControlLook`: `accentColor`, `seatColor`, `mutedColor`, `dark`), or undefined where the game has none. |
+| `cpuDifficulty?` | The CPU's levels (`{ value, options, onChange }`, the options hud's `MenuOption`s), saved per game, in player 1's opponent menu. Left out by a game with no seat 2, or whose CPU has no levels. |
+
+A game's `guide` (`GameGuide`) builds its How to Play cards from the live settings: `version`,
+`selectVersionSeen(state)` and `markSeen(version)` (from `createGameGuideSlice`), `selectInput(state)`
+(the settings the cards read, as a flat object, compared shallowly) and `getSteps(input, { touch,
+mode })`, hud's `GuideStep`s for a touch-first device or not and the round (`RoundMode`) seat 2's
+saved choice makes in this game (`seatTwoFor`).
+
 ### `createPackStore`
 
-`createPackStore(pack, config)`, where `config` is `PackStoreConfig`:
+`createPackStore(pack, config)` returns `{ store, persistor }` (`PackStore` is the store's type). It
+reads only the pack's `seatColors`, `appearance`, `seatTheme`, `reducers` and its games' `reducers` and
+`resumable` (`PackStoreSource`). `config` is `PackStoreConfig`:
 
 | Field | |
 | --- | --- |
@@ -173,6 +197,97 @@ through the pack (`usePack()`).
 | `blacklist?` | Keys left out of the root entry beside `liveplay`: keys that persist themselves (Solitaire's saved boards, one entry per game, since Android can't read an entry back past ~2MB). |
 | `serializableIgnoredPaths?` | State paths the dev serializability check skips (keys too big to walk on every action). |
 | `middleware?` | The pack's own middleware, after the shell's (Solitaire's settings that follow the player). |
+
+### The store's keys
+
+`createPackStore` mounts these beside the pack's and the games' own keys.
+`createShellReducers({ seatColors, appearance, seatTheme })` builds the same set (all but
+`lastActiveGame`), and `ShellState` is their state, what a game's selectors read. Each key's reducer,
+actions and defaults are exported for a pack's own code and its tests.
+
+| Key | |
+| --- | --- |
+| `theme` | auto-paper's theme, starting from the pack's `appearance` and a triad of its `seatColors` (or what `seatTheme` makes of them). |
+| `haptic`, `sound` | feedback-press's settings. Sound starts off in a development build. |
+| `keepAwake` | `@rific/core`'s Keep Awake setting. |
+| `profiles` | `@tastic/profile`'s roster, kept in step with the shared one (see `useProfiles`). |
+| `profileSelection` | Which profile each seat last picked, null for a guest: `profileSelectionReducer`, starting from `defaultProfileSelectionState` (`{ 1: null, 2: null }`). `profileSelectionActions`: `select({ seat, profileId })` (a profile already in the other seat swaps the two), `clearProfile(profileId)` and `pruneToRoster(profileIds)`. Never shared with a sibling app. |
+| `seatColors` | Each seat's remembered color: `createSeatColorsReducer(seatColors)`, starting from `defaultSeatColorsState(seatColors)` (each guest seat on its own seat color, the CPU on seat 2's, no profile picks). `seatColorsActions`: `setLastGuestColor({ seat, color })`, `setLastCpuColor(color)` and `setProfileColor({ profile, color })`, a profile's pick in this pack (null, or the profile's own color, drops it). |
+| `appSettings` | Settings for the whole pack (`AppSettings`): `deferBottomEdgeGestures`, Edge Guard's opt-in, false in `DEFAULT_APP_SETTINGS`. `appSettingsReducer`, and `appSettingsActions.initialize(patch)`, which merges. Read and written with `useAppSettings`. |
+| `opponent` | Who sits in seat 2 for the whole pack (`OpponentState`: `seatTwo`), the CPU in `DEFAULT_OPPONENT`. `opponentReducer`, and `opponentActions`: `setSeatTwo(seatTwo)` and `initialize(state)`. Read and written with `useOpponent`. |
+| `liveplay` | This round, never saved (`LiveplaySliceState`): `activelyPlaying` (false) and `activeRound` (null until a loadout commits one; `ActiveRound`: `game`, `mode`, `settings`). `liveplayReducer`, and `liveplayActions`: `setActivelyPlaying(on)`, `setActiveRound(round)` and `initialize(state)`. A play screen sets `activelyPlaying` while a round is live and unpaused, and back to false as it unmounts: Edge Guard, when the player has turned it on, only guards while it's true. |
+| `lastActiveGame` | Only in a pack with a `resumable` game: the play screen a cold launch resumes. Not exported. |
+
+### Building a game's keys
+
+- `createPlayerSettings({ id, defaults, distinctControls })`: a game's loadout settings, kept per
+  player. `defaults` holds every setting, with `controlScheme` (`{ 1, 2 }`) for each seat's controls.
+  The match settings follow seat 1's player (only what they changed is saved, so a setting added later
+  starts at its default), and each seat's controls follow the player in it (seat 2's only for a
+  person). `distinctControls`, optional, lists every control in menu order where the two seats can't
+  share one (a desktop key cluster): when both would get the same, seat 2 shows and plays the first
+  one seat 1 isn't using, never saved. It returns `reducers` (`<id>Settings` and `<id>Controls`, for
+  the game's own `reducers`), `settingsReducer`, `controlsReducer`, `actions` (`patch(player,
+  changes)`, `setControl(player, control)`), `compose(saved, controls, selection, seatTwoIsPerson)`,
+  `select(state)` (the same settings read straight from the store, as How to Play reads them) and
+  `useSettings()` (`{ settings, setSettings(patch) }`, the loadout's one write path). A deleted
+  profile's settings and controls go with it.
+- `seatPlayerKey(selection, seat)`: who a seat's saved settings belong to: the profile picked for it,
+  or that seat's guest (`'guest:1'`, `'guest:2'`).
+- `createGameStats({ key, defaultStats, isValidStats, catalog, getProfileStatsView })`: one game's
+  stats and achievements, on `@tastic/achievements`' `createAchievementsSlice` under the store key
+  `key`. The stats keep a `profiles` bucket per profile beside the device-wide totals, and
+  `getProfileStatsView(bucket)` shows a bucket in the same shape, so every achievement in `catalog`
+  reads either. `isValidStats` is optional. It returns `reducer` (a deleted profile takes its bucket
+  and unlocks with it), `actions`, `Provider` (the game's `Provider`) and `useStats()`: `stats`,
+  `unlockedAchievements`, `record(update, profileIds)`, which applies a result and returns what it
+  unlocked (`RecordResult`: `device`, and `profiles` by seat for each seat the optional `profileIds`
+  maps to a profile), and
+  `resetAll()`.
+- `createGameGuideSlice(mountKey)`: which version of a game's How to Play a player has finished or
+  skipped, under the game's own key: `{ actions: { markSeen }, reducer, selectVersionSeen }`, for its
+  `GameGuide`. Unlike hud's `createGuideSlice`, a saved store without the key reads as not seen, so a
+  game added to a pack in an update shows its cards to everyone.
+- `onProfileRemoved(reducer, forget)`: wraps a game's reducer so it runs `forget(state, profileId)`
+  when the Profiles screen deletes a profile (not when a sibling app's roster sync drops one).
+  `forgetProfileAchievements(dropStats)` is a `forget` for a `createAchievementsSlice` state: it drops
+  the profile's unlocks, and its stats through `dropStats(stats, profileId)`.
+
+### Hooks and helpers
+
+`RootLayout` mounts every provider these read.
+
+- `usePack()`: the `PackDefinition`. `usePackGame(id)`: one of its games, or undefined for an id the
+  pack doesn't have. `PackProvider` (`pack`, `children`) provides them.
+- `useProfiles()`: `profiles`, `lastSelected` (each seat's profile id, or null), `loaded`,
+  `createProfile(input)`, `updateProfile(id, patch)`, `deleteProfile(id)` (which also clears it from
+  any seat) and `selectProfile(seat, profileId)`. Its `ProfilesProvider` reconciles the saved roster
+  with `@tastic/profile`'s shared one in the App Group `group.com.infinitetoken.tastic` once at launch
+  (`loaded` turns true then, and the splash screen waits for it) and keeps the two in step.
+- `useSeatColors(p2IsHuman)`: both seats' live colors and their pickers' handlers (`p1Color`,
+  `p2Color`, `handleP1ColorChange`, `handleP2ColorChange`), with the theme following them (see
+  `seatTheme`). A pick of the other seat's current color swaps the two.
+- `useActiveRound(game, defaults)`: the round a play screen plays, `{ mode, settings }`: the one its
+  loadout committed, with its settings over `defaults`, or with none (a direct link, a web reload, a
+  game with no loadout) `defaults` and the mode a fresh install's seat 2 makes in this game.
+- `useOpponent()`: `{ seatTwo, setSeatTwo }`, seat 2's saved choice for the whole pack.
+- `useAppSettings()`: `{ settings, setSettings(patch) }`, the pack-wide settings (`AppSettings`). A
+  patch changes only the fields it names.
+- `useGameGuide()`: How to Play. `openFirstTime(gameId, next)` shows a game's cards if this player
+  hasn't finished or skipped this version, then runs `next` once they close (at once otherwise);
+  `openFor(gameId)` shows them now; `openPack()` shows the pack's own `guide`; `autoShowPack()` shows
+  it once per session while unseen (Home's first launch). A game with no cards of its own opens
+  nothing.
+- `useAtComputer()`: true on the web without a touch-first screen (`@tastic/core`'s
+  `useIsTouchPrimaryDevice`), where `sideBySideAtComputer` and `MatchChips` see a computer.
+- `roundModeFor(seatTwo)`: `'cpu'` is `'vsCpu'`, `'person'` `'twoPlayer'` and `'nobody'` `'solo'`.
+  `humanSeatsFor(mode)`: the seats that press Ready, `[1, 2]` in 2 Player and `[1]` otherwise.
+  `seatTwoFor(saved, choices)`: seat 2's saved choice as one game reads it (see `GameDefinition`).
+- `SettingsDialog` (`SettingsDialogProps`): `visible`, `onDismiss`, `onShowHowToPlay` (optional: shows
+  the How to Play row, as a loadout does; left out on Home and in a match) and `children` (a play
+  screen's own rows). The pack's `useSettingsRules` goes above the shell's rows, and `children` and
+  then the pack's `SettingsSections` under them.
+- `safeBack()`: back, or Home (`/`) where there's nothing to go back to.
 
 ### On every pack (0.2.0)
 
@@ -202,7 +317,7 @@ longer reads the accelerometer, draws a turn or offers Lock Orientation. A pack 
 ### The chips over a match (0.6.0)
 
 `MatchChips` is every game's back and settings chips during a match, so they sit and show the same
-way in every game of every pack. A play screen renders it with `playing` (true while play is on: a
+way in every game of every pack. A play screen renders it (`MatchChipsProps`) with `playing` (true while play is on: a
 live puck, a shot in flight, a round being ridden), `faceToFace` (two players at opposite ends of the
 screen right now) and `onBack`/`onSettings`, plus `centerLineY` when the line between the players isn't
 the window's middle.
@@ -249,8 +364,9 @@ const quit = useBackBlock(hasProgress, requestBack)
 
 ## Peer dependencies
 
-None are bundled. The floors are the versions PuckTastic and DuelTastic ran the shell on when it
-became a package (the lower of the two where they differ).
+None are bundled. The floors started as the versions PuckTastic and DuelTastic ran the shell on when
+it became a package (the lower of the two where they differ), and some have been raised since for
+what the shell started using (noted in the table).
 
 | Peer | Floor | Used for |
 | --- | --- | --- |
@@ -261,19 +377,20 @@ became a package (the lower of the two where they differ).
 | `expo-constants` | >=58.0.12 | the web tab title |
 | `expo-blur`, `@react-native-masked-view/masked-view` | >=58.0.4, >=0.3.2 | auto-paper's blur and its scroll fade, Home's fading scrollers |
 | `expo-haptics`, `expo-keep-awake` | >=58.0.7, >=58.0.3 | the toaster's haptics, Keep Awake |
+| `expo-audio` | >=58.0.11 | the UI sounds, through `@rific/feedback-press/audio` |
 | `react-native-gesture-handler`, `react-native-reanimated`, `react-native-safe-area-context` | >=3.3.0, >=4.7.1, >=5.11.0 | the gesture root, auto-paper's dialogs and the loadout's fades, insets (with room for iPadOS's window controls) |
 | `react-native-paper` | >=5.15.3 | text, icons, the toaster and feedback-press |
 | `@reduxjs/toolkit`, `redux`, `react-redux`, `redux-persist`, `@react-native-async-storage/async-storage` | >=2.13.0, >=5.0.1, >=9.3.0, >=6.0.0, >=2.2.0 | the store and where it's saved |
 | `@rific/auto-paper` | >=0.13.4 | the theme |
 | `@rific/core` | >=0.5.0 | settings slices, Keep Awake, `safeBack` |
 | `@rific/feedback-press` | >=0.13.1 | haptic and sound settings, the UI sounds |
-| `@rific/toaster` | >=0.10.1 | toasts (DuelTastic runs 0.12, PuckTastic 0.10) |
-| `@tastic/core` | >=0.15.0 | the seat mode from the window's shape, the root background |
+| `@rific/toaster` | >=0.10.1 | toasts |
+| `@tastic/core` | >=0.16.0 | the seat mode from the window's shape, the root background, the test for a computer behind `useAtComputer` (0.16.0's `useIsTouchPrimaryDevice`) |
 | `@tastic/hud` | >=0.29.0 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0; 0.27.1's options for a pack drawn on its own backdrop; 0.28.0's Ready pill; 0.29.0's leading Settings sections), How to Play |
-| `@tastic/profile` | >=0.16.2 | profiles, the seat buttons, seat colors |
+| `@tastic/profile` | >=0.18.0 | profiles and the shared roster, the seat buttons, seat colors, the dividers in player 1's opponent menu (0.18.0's `dividerBefore`) |
 | `@tastic/achievements` | >=0.6.0 | `createGameStats`, `forgetProfileAchievements` |
 | `@tastic/split-screen` | >=0.5.5 | the 2 Player loadout's two halves |
 | `@tastic/edge-guard` | >=0.2.0 | Edge Guard during play (`useEdgeGestureGuard` on iOS, `edgeGuardScreenOptions` on Android) |
 
 The two UI sounds every button plays (`assets/sounds/select.wav` and `notification.wav`) ship with the
-package.
+package. They play through `@rific/feedback-press/audio`'s `useAudioPool`, which imports `expo-audio`.

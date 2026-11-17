@@ -342,7 +342,8 @@ export interface PackDefinition {
   // game) and from Home's Settings, never in a play screen.
   guide?: PackGuide
   // Seat 1's button, on Home and in every loadout: the chip's label for a guest (default 'P1') and the
-  // guest row's in its menu (default @tastic/profile's).
+  // guest row's in its menu (default @tastic/profile's). A 2 Player loadout's seat 2 button takes the
+  // same two, its guest label defaulting to 'P2'.
   guestLabel?: string
   nullLabel?: string
   // The stats screen keeps a guest's stats under GUEST_PLAYER_ID: a Guest entry in the player picker

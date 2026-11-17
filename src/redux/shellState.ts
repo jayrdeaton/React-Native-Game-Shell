@@ -1,6 +1,6 @@
 import { createThemeReducer, getThirdColor } from '@rific/auto-paper'
 import { keepAwakeReducer } from '@rific/core'
-import { defaultSoundSettings, hapticReducer, soundReducer, type SoundSettings } from '@rific/feedback-press'
+import { hapticReducer, soundReducer } from '@rific/feedback-press'
 import { profilesReducer } from '@tastic/profile'
 
 import type { PackDefinition } from '../types'
@@ -10,14 +10,6 @@ import liveplay from './liveplaySlice'
 import opponent from './opponentSlice'
 import profileSelection from './profileSelectionSlice'
 import { createSeatColorsReducer } from './seatColorsSlice'
-
-// @rific/feedback-press's own soundReducer defaults `enabled` to true unconditionally (that
-// default isn't published with the dev-only override yet). Wrap it so a fresh install with no
-// persisted preference (redux-persist finds nothing in AsyncStorage for the `sound` key) defaults
-// muted in dev/simulator builds so Claude/local testing doesn't blast audio; production builds
-// still default to sound on. All actual action handling still delegates to the package's reducer.
-const initialSoundSettings: SoundSettings = { ...defaultSoundSettings, enabled: !__DEV__ }
-const appSoundReducer = (state: SoundSettings = initialSoundSettings, action: { type: string }): SoundSettings => soundReducer(state, action)
 
 // The store keys every pack has, whatever its games, built from the pack's own seat colors and
 // appearance. Each game adds its own keys beside these (see GameDefinition.reducers).
@@ -34,7 +26,9 @@ export function createShellReducers({ seatColors, appearance = 'system', seatThe
     // only when the pack's appearance is; hooks/useSeatColors.ts re-applies it with the live mode).
     theme: createThemeReducer(seatTheme ? { appearance, ...seatTheme(seatColors, appearance === 'dark') } : { appearance, color: { primary: seatColors[1], secondary: seatColors[2], tertiary: getThirdColor(seatColors[1], seatColors[2]) } }),
     haptic: hapticReducer,
-    sound: appSoundReducer,
+    // Starts off in a development build (feedback-press's defaultSoundSettings is `!__DEV__`), so local
+    // testing on a simulator is silent; a production build starts with sound on.
+    sound: soundReducer,
     // @rific/core's Keep Awake setting (see Providers.tsx's KeepAwakeBridge), under the namespace its
     // REHYDRATE handling expects.
     keepAwake: keepAwakeReducer,

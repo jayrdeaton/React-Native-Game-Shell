@@ -307,7 +307,7 @@ against hud's packed tarball, then released on hud 0.27.1 from npm (the peer flo
   0.28.0 (`surfaceColor`/`readySurfaceColor`), the peer floor since 0.7.0; against 0.27.1 `tsc`
   fails on exactly those two props. Pinned by `loadoutOptions`' "keep 2 Player's Ready buttons the
   outline by default" and "draw every Ready button as a pill" cases.
-- **`guestLabel`, `nullLabel`:** seat 1's panel, as Home's button (`'P1'` unset).
+- **`guestLabel`, `nullLabel`:** seat 1's panel, as Home's button (`'P1'` unset), and seat 2's in a 2 Player loadout (`'P2'` unset).
 - **`previewColor`:** seat 1's panel gets it as `previewValue` (its chip, Color row, swatches and Ready
   button; the saved color stays the Color row's value), seat 2's `SeatTwoPanel` (`OpponentPicker` since 0.7.0) the same (its chip, Color
   row, each profile row, its Ready button), and the one-human Ready button and each seat control's
@@ -496,12 +496,14 @@ Every package the source imports, none bundled. Each floor is the version PuckTa
 had installed when the package was made (2026-10-28), the lower of the two where they differ: only
 `@rific/toaster` did (DuelTastic 0.12.0, PuckTastic 0.10.1). 0.2.0 lowered six to what Solitaire has
 installed, so it can move onto the shell in an OTA (see "What CardTastic needs"), and raised
-`@tastic/hud` to 0.26.0 for `/lobby`. Nothing is optional: every import is at
+`@tastic/hud` to 0.26.0 for `/lobby`. `expo-audio` (>=58.0.11, the shell's own devDependency version)
+became a peer on 2026-11-17: `Providers.tsx` imports `@rific/feedback-press/audio`, which imports it,
+but it had only ever been a devDependency. Nothing is optional: every import is at
 module scope. `redux` is imported for types only, but those types are in the built declarations. The
 README's table says what each is for. Each peer is also a `devDependency`, at the apps' versions,
 plus what jest-expo needs (`expo`, `jest-expo`, `@react-native/jest-preset`, `@babel/core`,
 `@testing-library/react-native` and its `test-renderer`), what the peers themselves load at import
-(`@rific/focus-chain`, `@rific/gestures`, `@rific/updater` with `expo-updates`, `expo-audio`,
+(`@rific/focus-chain`, `@rific/gestures`, `@rific/updater` with `expo-updates`,
 `expo-system-ui`, `react-native-screens`, `react-native-worklets`), and the lint preset's plugins
 (`eslint-plugin-react-hooks`, `eslint-plugin-react-native`, as in hud). The fleet's `.npmrc` sets
 `legacy-peer-deps`, so npm installs none of these by itself.

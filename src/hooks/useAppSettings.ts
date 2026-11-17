@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { type AppSettings, appSettingsActions } from '../redux/appSettingsSlice'
 import type { ShellState } from '../redux/shellState'
 
-// The one way the pack-wide settings are read and written (Lock Orientation, Edge Guard). Writes
+// The one way the pack-wide settings are read and written (Edge Guard). Writes
 // merge, so a patch only changes the fields it names.
 export function useAppSettings(): { settings: AppSettings; setSettings: (patch: Partial<AppSettings>) => void } {
   const settings = useSelector((state: ShellState) => state.appSettings)

@@ -166,4 +166,18 @@ describe('createPackStore', () => {
     expect(seen).toContain('test/fast')
     expect(root(store.getState()).testSettings).toEqual({ speed: 'fast' })
   })
+
+  it('hands an action with an error (a createAsyncThunk rejection) to the reducers and the pack middleware like any other', async () => {
+    const seen: string[] = []
+    const middleware = () => (next: (action: unknown) => unknown) => (action: unknown) => {
+      seen.push((action as UnknownAction).type)
+      return next(action)
+    }
+    const failedReducer = (state: { failed: boolean } = { failed: false }, action: UnknownAction) => (action.type === 'test/load/rejected' ? { failed: true } : state)
+    const { store } = await launch({ ...PACK, reducers: { load: failedReducer } }, {}, undefined, { middleware: [middleware] })
+    store.dispatch({ type: 'test/load/rejected', error: { message: 'offline' } })
+
+    expect(seen).toContain('test/load/rejected')
+    expect(root(store.getState()).load).toEqual({ failed: true })
+  })
 })
