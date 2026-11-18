@@ -47,13 +47,14 @@ export function HomeScreen() {
   useEffect(() => {
     if (!resumeGame) autoShowPack()
   }, [resumeGame, autoShowPack])
-  if (resumeGame) return <Redirect href={playHref(resumeGame.id)} />
+  if (resumeGame) return <Redirect href={pack.resumeHref?.(resumeGame.id) ?? playHref(resumeGame.id)} />
   return <HomeMenu />
 }
 
 function HomeMenu() {
   const pack = usePack()
-  const layout = useHomeLayout()
+  const showPicker = pack.homePlayerPicker !== false
+  const layout = useHomeLayout(showPicker)
   const { insets } = layout
   const { dark, colors } = useAutoPaperTheme()
   const { openFirstTime, openFor, openPack } = useGameGuide()
@@ -136,6 +137,7 @@ function HomeMenu() {
   const pickerSize = getProfilePickerContentSize(profiles.length, true, colorSection)
   const pickerAlign = usePickerAlign(pickerHost.openId === `${SEAT_ONE_PICKER}-profile`, pickerSize.width, pickerSize.height)
 
+  // A pack can leave seat 1's button off Home (PackDefinition.homePlayerPicker)
   const picker = <ProfilePicker idPrefix={SEAT_ONE_PICKER} host={pickerHost} profiles={profiles} selectedId={lastSelected[1]} color={p1Drawn} dark={dark} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onSelect={(profile: Profile | null) => selectProfile(1, profile?.id ?? null)} onManage={() => router.push(PROFILES_HREF)} colorSection={colorSection} alignOverride={pickerAlign} triggerStyle={triggerStyle} />
 
   // Closes seat 1's menu on a press anywhere but the menu and its button. Where it's mounted matters on
@@ -173,7 +175,7 @@ function HomeMenu() {
             paints over the tiles. box-none: only its controls claim taps. */}
               <View style={[styles.wideLeftPane, { left: layout.paddingLeft, width: layout.leftPaneWidth, paddingTop: HOME_TOP_BAND + insets.top, paddingBottom: 16 + insets.bottom }, pickerHost.openId !== null && styles.pickerOpen]}>
                 <pack.HeroTitle words={pack.wordmark} color={fg} p1Color={p1Color} p2Color={p2Color} active={heroActive} fit={layout.heroFit} />
-                <View style={styles.widePicker}>{picker}</View>
+                {showPicker && <View style={styles.widePicker}>{picker}</View>}
               </View>
             </>
           ) : (
@@ -183,7 +185,7 @@ function HomeMenu() {
 
               {/* Who's playing: seat 1's button, the same one each loadout starts with. Lifted above the
             tiles while its menu is open, so the menu paints over them. */}
-              <View style={[styles.picker, pickerHost.openId !== null && styles.pickerOpen]}>{picker}</View>
+              {showPicker && <View style={[styles.picker, pickerHost.openId !== null && styles.pickerOpen]}>{picker}</View>}
 
               {tabBar && <View style={styles.listWidth}>{tabBar}</View>}
 

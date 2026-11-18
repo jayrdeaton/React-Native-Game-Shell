@@ -74,7 +74,7 @@ export interface HomeLayout {
 }
 
 // Pure form of useHomeLayout, for tests.
-export function computeHomeLayout(windowWidth: number, windowHeight: number, insets: EdgeInsets): HomeLayout {
+export function computeHomeLayout(windowWidth: number, windowHeight: number, insets: EdgeInsets, withPicker = true): HomeLayout {
   const isWide = windowWidth > windowHeight
   if (!isWide) {
     return { isWide, windowWidth, windowHeight, insets, paddingLeft: 0, paddingRight: 0, leftPaneWidth: 0, rightPaneWidth: 0, columns: 1, tileWidth: 0, previewWidth: 0, heroFit: undefined }
@@ -95,10 +95,10 @@ export function computeHomeLayout(windowWidth: number, windowHeight: number, ins
   const previewWidth = Math.max(0, tileWidth - 2 * HOME_TILE_PADDING)
 
   // The hero gets the pane's width and whatever height the pane has left once the corner buttons'
-  // band, seat 1's button and the bottom padding are taken: how it shrinks to fit is the pack's own.
+  // band, seat 1's button (where Home has one) and the bottom padding are taken: how it shrinks to fit is the pack's own.
   const heroFit = {
     width: Math.max(0, leftPaneWidth - HOME_HERO_SIDE_ROOM),
-    height: Math.max(0, windowHeight - insets.top - insets.bottom - HOME_TOP_BAND - HOME_LEFT_PANE_PICKER_GAP - HOME_LEFT_PANE_PICKER_HEIGHT - HOME_LEFT_PANE_BOTTOM_PADDING)
+    height: Math.max(0, windowHeight - insets.top - insets.bottom - HOME_TOP_BAND - (withPicker ? HOME_LEFT_PANE_PICKER_GAP + HOME_LEFT_PANE_PICKER_HEIGHT : 0) - HOME_LEFT_PANE_BOTTOM_PADDING)
   }
 
   return {
@@ -118,8 +118,8 @@ export function computeHomeLayout(windowWidth: number, windowHeight: number, ins
 }
 
 // The live layout for the current window.
-export function useHomeLayout(): HomeLayout {
+export function useHomeLayout(withPicker = true): HomeLayout {
   const { width, height } = useWindowDimensions()
   const insets = useSafeAreaInsets()
-  return computeHomeLayout(width, height, insets)
+  return computeHomeLayout(width, height, insets, withPicker)
 }

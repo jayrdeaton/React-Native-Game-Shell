@@ -134,6 +134,8 @@ PuckTastic and DuelTastic draw what they always did:
 | `statsGameTitles?` | `false` leaves each game's name off its sections on All Games, where the sections name it. |
 | `newProfileColor?` | A new profile's starting color on Profiles. Unset is auto-paper's first swatch. |
 | `usePickerAlign?` | `(open, contentWidth, contentHeight, options?) => AlignResult` (`PickerAlign`), a hook: where seat 1's menu on Home, both seat buttons' menus in a loadout's one-human row (2 Player keeps each menu in its own player's half), the stats screen's two pickers and a profile's color swatch open. It was added because hud's own placement measured a button in a frame turned by `@tastic/core`'s drawn rotation against the upright window (Solitaire's `useFrameAutoAlign`); nothing turns since core 0.15, so a pack may no longer need one. Profiles passes `{ maxContentWidth: 640 }`, its roster's column. Unset is hud's placement. |
+| `resumeHref?` | `(gameId) => Href \| null`: where a cold launch goes back into a resumable game, for a pack with more than one way to be playing it. Null, or unset, is the game's play screen. |
+| `homePlayerPicker?` | `false` leaves seat 1's button off Home, for a pack whose every game opens a loadout, where the player is picked anyway. |
 | `homeTabs?` | Tabs splitting Home's games (`HomeTab`: a `label`, and `includes(game)`, which of the pack's games it shows, in the pack's order): a switch under seat 1's button, or over the grid on a wide screen, on the theme's surface over a `Backdrop`, showing one tab's games at a time. It opens on the first tab and keeps the one picked while Home is covered or the window changes. The other tabs' games stay mounted, hidden, so a switch draws nothing new. A game no tab includes isn't on Home. Unset, or a single tab, shows every game with no switch. Solitaire's: Solitaire (no `seatTwo`) and Two Player. |
 
 ### `GameDefinition`
@@ -173,6 +175,7 @@ settings for the round `mode` seat 2 makes:
 | --- | --- |
 | `roundSettings` | The settings the round plays with, committed (liveplay's `activeRound.settings`) once every human seat is Ready. The play screen reads them back with `useActiveRound`. |
 | `options` | `(props: LoadoutOptionsProps) => ReactNode`: the match-options row (board, rules, puck), drawn under the loadout's popover `host` in its colors (`accentColor`, `mutedColor`, `onAccentColor`, `dark`). `onRandomize` and `onReset` are undefined while the loadout folds them into its shared action band. |
+| `placesSeats?` | With one person the seat buttons sit under `options`, over Ready. `true` passes them to `options` as `seats` instead, so a game can put them where it likes (CardTastic: under the game's name, above its rules). 2 Player's seats stay in each person's half. |
 | `optionIds` | The popover ids the options row opens, so the loadout lifts the row while one is open. |
 | `randomize`, `reset` | The loadout's randomize and reset buttons. |
 | `seatControl` | `(seat, host, look) => ReactNode \| undefined`: a human seat's controls picker (shot style, keys) in `look`'s colors (`SeatControlLook`: `accentColor`, `seatColor`, `mutedColor`, `dark`), or undefined where the game has none. |

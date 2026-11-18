@@ -169,12 +169,40 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   const p1PickerOpen = controlsHost.openId?.startsWith('p1-') ?? false
   const p1ControlOpen = controlsHost.openId === P1_CONTROL_ID
 
+  const controlLook = { accentColor: themeColors.tertiary, mutedColor: fgMuted, dark }
+  const p1Control = loadout.seatControl(1, controlsHost, { ...controlLook, seatColor: p1Drawn })
+  // Seat 1's button alone: player 1's controls and Ready sit under the row it shares with the
+  // opponent button, centered under both.
+  const p1Panel = <PlayerSetupPanel key={`p1-${layoutKey}`} idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman dark={dark} showReadyButton={false} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(PROFILES_HREF)} previewValue={seatPreview} triggerStyle={triggerStyle} useSeatPickerAlign={seatPickerAlign} />
+  // Who sits in seat 2, player 1's to pick in every mode. A game for one player (no seatTwo) has none:
+  // seat 1's button stands alone.
+  const opponentPicker = game.seatTwo && <OpponentPicker key={`opponent-${layoutKey}`} idPrefix='p1' host={controlsHost} choices={game.seatTwo} seatTwo={seatTwo} onSeatTwoChange={changeSeatTwo} cpuDifficulty={loadout.cpuDifficulty} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} allowSwapTaken={mode === 'vsCpu'} dark={dark} previewValue={seatPreview} triggerStyle={triggerStyle} usePickerAlign={seatPickerAlign} />
+  const toggleP1Ready = () => setReady((r) => ({ ...r, 1: !r[1] }))
+  const seatButtons = (
+    <View style={[styles.seatOneButtons, p1PickerOpen && styles.raised]}>
+      <Animated.View style={[styles.playersRow, p1PickerOpen && styles.raised, !p2IsHuman && playersRowFade]}>
+        {p1Panel}
+        {opponentPicker}
+      </Animated.View>
+      {p1Control && <View style={[styles.controlRow, p1ControlOpen && styles.raised]}>{p1Control}</View>}
+    </View>
+  )
+  // With one person a game can place the seat buttons among its own options (GameLoadout.placesSeats).
+  const seatsInOptions = !p2IsHuman && !!loadout.placesSeats
+  const seatOne = (
+    <View style={[styles.seatOne, !p2IsHuman && styles.seatOneAlone, p1PickerOpen && !seatsInOptions && styles.raised]}>
+      {!seatsInOptions && seatButtons}
+      <ReadyButton color={p1Drawn} ready={ready[1]} onToggleReady={toggleP1Ready} surfaceColor={readySurface} dark={dark} style={!p2IsHuman && p1PickerOpen && styles.readyButtonHidden} />
+    </View>
+  )
+
   const optionsRow = loadout.options({
     host: controlsHost,
     accentColor: themeColors.tertiary,
     mutedColor: fgMuted,
     onAccentColor: themeColors.onTertiary,
     dark,
+    seats: seatsInOptions ? seatButtons : undefined,
     // Left out (the row's own actions unrendered) whenever the shared band below carries them.
     onRandomize: showMetaInSharedBand ? undefined : loadout.randomize,
     onReset: showMetaInSharedBand ? undefined : loadout.reset
@@ -189,27 +217,6 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
     optionsRow
   )
 
-  const controlLook = { accentColor: themeColors.tertiary, mutedColor: fgMuted, dark }
-  const p1Control = loadout.seatControl(1, controlsHost, { ...controlLook, seatColor: p1Drawn })
-  // Seat 1's button alone: player 1's controls and Ready sit under the row it shares with the
-  // opponent button, centered under both.
-  const p1Panel = <PlayerSetupPanel key={`p1-${layoutKey}`} idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman dark={dark} showReadyButton={false} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(PROFILES_HREF)} previewValue={seatPreview} triggerStyle={triggerStyle} useSeatPickerAlign={seatPickerAlign} />
-  // Who sits in seat 2, player 1's to pick in every mode. A game for one player (no seatTwo) has none:
-  // seat 1's button stands alone.
-  const opponentPicker = game.seatTwo && <OpponentPicker key={`opponent-${layoutKey}`} idPrefix='p1' host={controlsHost} choices={game.seatTwo} seatTwo={seatTwo} onSeatTwoChange={changeSeatTwo} cpuDifficulty={loadout.cpuDifficulty} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} allowSwapTaken={mode === 'vsCpu'} dark={dark} previewValue={seatPreview} triggerStyle={triggerStyle} usePickerAlign={seatPickerAlign} />
-  const toggleP1Ready = () => setReady((r) => ({ ...r, 1: !r[1] }))
-  const seatOne = (
-    <View style={[styles.seatOne, !p2IsHuman && styles.seatOneAlone, p1PickerOpen && styles.raised]}>
-      <View style={[styles.seatOneButtons, p1PickerOpen && styles.raised]}>
-        <Animated.View style={[styles.playersRow, p1PickerOpen && styles.raised, !p2IsHuman && playersRowFade]}>
-          {p1Panel}
-          {opponentPicker}
-        </Animated.View>
-        {p1Control && <View style={[styles.controlRow, p1ControlOpen && styles.raised]}>{p1Control}</View>}
-      </View>
-      <ReadyButton color={p1Drawn} ready={ready[1]} onToggleReady={toggleP1Ready} surfaceColor={readySurface} dark={dark} style={!p2IsHuman && p1PickerOpen && styles.readyButtonHidden} />
-    </View>
-  )
   // A person in seat 2: their own seat button (Player 2 or a profile, never the CPU), controls and
   // Ready, in their half.
   const p2Control = p2IsHuman ? loadout.seatControl(2, p2Host, { ...controlLook, seatColor: p2Drawn }) : undefined
@@ -243,7 +250,8 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
           />
         ) : (
           <View style={styles.stackedZone}>
-            {sharedControls}
+            {/* A menu opening from seat buttons placed in the options has to clear Ready, the next sibling */}
+            {seatsInOptions ? <View style={p1PickerOpen && styles.raised}>{sharedControls}</View> : sharedControls}
             {seatOne}
           </View>
         )}

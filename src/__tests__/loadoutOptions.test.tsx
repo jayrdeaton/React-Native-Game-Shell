@@ -1,7 +1,7 @@
 import type { AlignResult } from '@tastic/hud/chrome'
-import { act, render, screen } from '@testing-library/react-native'
+import { act, render, screen, within } from '@testing-library/react-native'
 import { createRef, type ReactNode } from 'react'
-import { type StyleProp, StyleSheet, type ViewStyle } from 'react-native'
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native'
 
 import { opponentActions } from '../redux/opponentSlice'
 import { type LoadoutGame, LoadoutScreen } from '../screens/LoadoutScreen'
@@ -248,6 +248,41 @@ describe("a pack's Backdrop and foreground", () => {
     await renderLoadout({ Backdrop: () => null, foreground: '#F5F1E6' }, 'person')
 
     expect(mockBand).toHaveBeenLastCalledWith('#F5F1E6')
+  })
+})
+
+describe('a game that places the seat buttons itself', () => {
+  const placing = (seatTwo?: GameLoadout['placesSeats']) =>
+    standInGame('ratslap', {
+      seatTwo: ['cpu', 'person'],
+      useLoadout: () => ({
+        ...recordingLoadout,
+        placesSeats: seatTwo,
+        options: (args: LoadoutOptionsProps) => {
+          optionsArgs(args)
+          return <View testID='game-options'>{args.seats}</View>
+        }
+      })
+    }) as LoadoutGame
+
+  it('gets them in its options with one person, and they appear nowhere else', async () => {
+    await renderLoadout({}, 'cpu', placing(true))
+    expect(within(screen.getByTestId('game-options')).getByTestId('seat-1')).toBeTruthy()
+    expect(screen.getAllByTestId('seat-1')).toHaveLength(1)
+    expect(mockReady).toHaveBeenCalled()
+  })
+
+  it("leaves each person's seat in their own half with two people", async () => {
+    await renderLoadout({}, 'person', placing(true))
+    expect(optionsArgs.mock.lastCall![0].seats).toBeUndefined()
+    expect(within(screen.getByTestId('game-options')).queryByTestId('seat-1')).toBeNull()
+    expect(screen.getAllByTestId('seat-1')).toHaveLength(1)
+  })
+
+  it("is the shell's to place for any other game", async () => {
+    await renderLoadout({}, 'cpu', placing(undefined))
+    expect(optionsArgs.mock.lastCall![0].seats).toBeUndefined()
+    expect(screen.getAllByTestId('seat-1')).toHaveLength(1)
   })
 })
 

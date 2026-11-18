@@ -635,3 +635,13 @@ Android").
 - Tests: `packRoot`'s "Edge Guard on Android" (both bars on with the setting, a `keepStatusBar` game
   included; the navigation bar kept and the game's status bar left alone with it off; nothing for a pack
   with `edgeGuard: false`) and iOS adding nothing.
+
+## A pack whose every game opens a loadout (2026-11-18)
+
+CardTastic gave every game a setup screen, which changed three things it had asked of the shell, each an option the other packs leave off:
+
+- **`GameLoadout.placesSeats`:** with one person the seat buttons sit under the options row, over Ready; `true` hands them to `options` as `seats`, to put among its own (CardTastic: under the game's name, above its rules). The options row is lifted while seat 1's menu is open, so the menu clears Ready. 2 Player's seats stay in each person's half.
+- **`PackDefinition.homePlayerPicker: false`** leaves seat 1's button off Home, whose hero then takes its room (`computeHomeLayout`'s `withPicker`).
+- **`PackDefinition.resumeHref`** picks where a cold launch goes back into a resumable game, for a pack with more than one way to be playing it (CardTastic's Daily Deals). Null or unset is the play screen.
+
+Tests: `loadoutOptions`' "a game that places the seat buttons itself", `homeOptions`' "where a cold launch resumes" and "a pack that leaves the player to its loadouts", `homeLayout`'s hero case.

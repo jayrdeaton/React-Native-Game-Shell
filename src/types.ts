@@ -3,7 +3,7 @@ import type { AlignResult, PopoverHost } from '@tastic/hud/chrome'
 import type { GuideStep } from '@tastic/hud/guide'
 import type { MenuOption } from '@tastic/hud/lobby'
 import type { FontSource } from 'expo-font'
-import type { Stack } from 'expo-router'
+import type { Href, Stack } from 'expo-router'
 import type { ComponentProps, ComponentType, ReactNode } from 'react'
 import type { Action, Reducer } from 'redux'
 
@@ -51,6 +51,9 @@ export interface LoadoutOptionsProps {
   // Undefined while the loadout folds randomize/reset into its shared action band instead.
   onRandomize?: () => void
   onReset?: () => void
+  // With one person, player 1's row of buttons (their seat's, the opponent's and their controls), for a
+  // game whose loadout sets placesSeats to put where it likes. Undefined otherwise.
+  seats?: ReactNode
 }
 
 // The colors a seat's controls picker draws with: the loadout's tertiary accent, or the seat's own.
@@ -69,6 +72,10 @@ export interface GameLoadout {
   // The match-options row (board, rules, puck): the game's own controls, drawn under the shared
   // popover host so its menus open, elevate and close like every other loadout menu.
   options: (props: LoadoutOptionsProps) => ReactNode
+  // With one person the seat buttons sit under the options row, over Ready. True hands them to `options`
+  // instead (LoadoutOptionsProps.seats), for a game that wants them among its own (over its rules, under
+  // its name). 2 Player's seats stay in each person's half.
+  placesSeats?: boolean
   // The popover ids the options row opens, so the loadout can elevate the row while one is open.
   optionIds: readonly string[]
   randomize: () => void
@@ -277,6 +284,12 @@ export interface PackDefinition {
   // screen) showing one tab's games at a time. It opens on the first, and keeps the tab picked while Home
   // is covered. Unset, or a single tab, shows every game with no switch.
   homeTabs?: readonly HomeTab[]
+  // False leaves seat 1's button off Home, for a pack whose every game opens a loadout, where the
+  // player is picked anyway (CardTastic). Home's hero then takes its room.
+  homePlayerPicker?: boolean
+  // Where a cold launch goes back into a resumable game, for a pack with more than one way to be playing
+  // it (CardTastic's Daily Deals). Null, or unset, is the game's play screen.
+  resumeHref?: (gameId: string) => Href | null
   // Player 1's and player 2's own default colors. They seed the theme's primary and secondary (the
   // tertiary is derived from them, see shellState.ts) and the guest and CPU colors a fresh install
   // starts with (seatColorsSlice.ts), so a fresh install's live theme and its remembered colors agree.

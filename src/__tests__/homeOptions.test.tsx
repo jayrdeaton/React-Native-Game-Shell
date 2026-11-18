@@ -157,6 +157,38 @@ describe("seat 1's button", () => {
   })
 })
 
+describe('where a cold launch resumes', () => {
+  const resumable = { resumable: true }
+
+  it("is the game's play screen, or where the pack says", async () => {
+    const pack = { games: [{ ...klondike, ...resumable }, spider, pong] }
+    await renderHome(pack, 'klondike')
+    expect(screen.getByTestId('redirect').props.children).toContain('/play/[game]')
+
+    await renderHome({ ...pack, resumeHref: (game: string) => `/somewhere/${game}` as never }, 'klondike')
+    expect(screen.getByTestId('redirect').props.children).toContain('/somewhere/klondike')
+
+    await renderHome({ ...pack, resumeHref: () => null }, 'klondike')
+    expect(screen.getByTestId('redirect').props.children).toContain('/play/[game]')
+  })
+})
+
+describe('a pack that leaves the player to its loadouts', () => {
+  it.each([
+    ['upright', { width: 402, height: 874 }],
+    ['wide', { width: 874, height: 402 }]
+  ])('shows no seat 1 button on Home, %s', async (_name, window) => {
+    mockWindow = window
+    await renderHome({ homePlayerPicker: false })
+    expect(screen.queryByTestId('seat-1')).toBeNull()
+  })
+
+  it('keeps the button for every other pack', async () => {
+    await renderHome()
+    expect(screen.getByTestId('seat-1')).toBeTruthy()
+  })
+})
+
 describe("seat 1's menu placement", () => {
   // A stand-in placement that says where it was asked to place what.
   const placement = (open: boolean, width: number, height: number): AlignResult => ({ align: 'center', verticalAlign: open ? 'above' : 'below', maxHeight: width + height, measured: true, triggerRef: createRef() })

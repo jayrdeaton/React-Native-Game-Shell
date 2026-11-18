@@ -88,4 +88,11 @@ describe('computeHomeLayout, across devices', () => {
     expect(layout.previewWidth).toBeGreaterThanOrEqual(0)
     expect(layout.heroFit).toEqual({ width: 0, height: 0 })
   })
+
+  it("gives the hero seat 1's button's room when Home has none", () => {
+    const withPicker = computeHomeLayout(874, 402, NO_INSETS).heroFit!
+    const without = computeHomeLayout(874, 402, NO_INSETS, false).heroFit!
+    expect(without.height).toBe(withPicker.height + HOME_LEFT_PANE_PICKER_GAP + HOME_LEFT_PANE_PICKER_HEIGHT)
+    expect(without.width).toBe(withPicker.width)
+  })
 })
