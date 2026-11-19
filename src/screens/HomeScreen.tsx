@@ -119,7 +119,7 @@ function HomeMenu() {
   const tabs = pack.homeTabs && pack.homeTabs.length > 1 ? pack.homeTabs : null
   const [tabLabel, setTabLabel] = useState(() => tabs?.[0].label ?? null)
   const tab = tabs ? (tabs.find((t) => t.label === tabLabel) ?? tabs[0]) : null
-  const tabButtons = useMemo(() => tabs?.map(({ label }) => ({ value: label, label })) ?? [], [tabs])
+  const tabButtons = useMemo(() => tabs?.map(({ label }) => ({ value: label, label, labelStyle: pack.labelStyle })) ?? [], [tabs, pack.labelStyle])
   const tabBar = tab && <SegmentedButtons value={tab.label} onValueChange={setTabLabel} buttons={tabButtons} theme={SEGMENT_THEME} style={[styles.tabs, pack.Backdrop && { backgroundColor: colors.surface }]} />
   const columnClamp = useClampOnShrink()
   const gridClamp = useClampOnShrink()
@@ -285,6 +285,7 @@ interface GameRowProps {
 export const ROW_BLURB_LINES = 3
 
 function GameRow({ game, hidden, dark, p1Color, p2Color, previewRevealed, onPress, onRules }: GameRowProps) {
+  const { titleStyle } = usePack()
   const well = useWellColors()
   const GameIcon = game.icon
   return (
@@ -294,7 +295,7 @@ function GameRow({ game, hidden, dark, p1Color, p2Color, previewRevealed, onPres
       <Pressable onPress={onPress} style={[styles.row, { backgroundColor: well.bg }]} accessibilityRole='button' accessibilityLabel={game.title}>
         {game.Preview ? <PreviewBox game={game} width={ROW_PREVIEW_WIDTH} revealed={previewRevealed} dark={dark} p1Color={p1Color} p2Color={p2Color} /> : <View style={[styles.rowIcon, { backgroundColor: dark ? ICON_DARK_BG : ICON_LIGHT_BG }]}>{GameIcon && <GameIcon size={ROW_ICON_SIZE} p1Color={p1Color} p2Color={p2Color} dark={dark} />}</View>}
         <View style={styles.rowText}>
-          <Text variant='titleLarge' style={[styles.rowTitle, { color: well.fg }]} numberOfLines={1}>
+          <Text variant='titleLarge' style={[styles.rowTitle, { color: well.fg }, titleStyle]} numberOfLines={1}>
             {game.title}
           </Text>
           {/* Three lines, as a tile allows: a narrow phone (an iPhone SE, a 411dp Android phone) wraps a
@@ -322,12 +323,13 @@ interface GameTileProps extends GameRowProps {
 // name and blurb under it, since a row needs ~290pt, more than a grid column beside the hero has. The
 // rules button floats over the preview's corner, beside the tile's button rather than inside it.
 function GameTile({ game, hidden, width, previewWidth, dark, p1Color, p2Color, previewRevealed, onPress, onRules }: GameTileProps) {
+  const { titleStyle } = usePack()
   const well = useWellColors()
   return (
     <View style={[{ width }, hidden && styles.hidden]}>
       <Pressable onPress={onPress} style={[styles.tile, { backgroundColor: well.bg }]} accessibilityRole='button' accessibilityLabel={game.title}>
         <PreviewBox game={game} width={previewWidth} revealed={previewRevealed} dark={dark} p1Color={p1Color} p2Color={p2Color} />
-        <Text variant='titleMedium' style={[styles.rowTitle, { color: well.fg }]} numberOfLines={1}>
+        <Text variant='titleMedium' style={[styles.rowTitle, { color: well.fg }, titleStyle]} numberOfLines={1}>
           {game.title}
         </Text>
         <Text variant='bodySmall' style={{ color: well.fgMuted }} numberOfLines={3}>

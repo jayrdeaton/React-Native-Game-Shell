@@ -3,7 +3,7 @@ import { useHapticSettings } from '@rific/feedback-press'
 import { Toaster, ToastProvider } from '@rific/toaster'
 import { useThemedRootBackground } from '@tastic/core'
 import { edgeGuardScreenOptions } from '@tastic/edge-guard'
-import { ScreenFrame } from '@tastic/hud/chrome'
+import { DialogHeaderStyleProvider, LetteringProvider, ScreenFrame } from '@tastic/hud/chrome'
 import { ProfileColorProvider } from '@tastic/profile'
 import * as Haptics from 'expo-haptics'
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router'
@@ -198,6 +198,24 @@ interface RootLayoutProps {
   persistor: Persistor
 }
 
+// The pack's own lettering (PackDefinition.titleStyle and labelStyle): every hud dialog's title, the
+// fleet's big header kept, and hud's and @tastic/profile's titles and labels (LetteringProvider). Above
+// Theme, so it reaches the dialogs in auto-paper's portal host.
+function DialogTitles({ children }: { children: ReactNode }) {
+  const { titleStyle, labelStyle } = usePack()
+  const lettered = (
+    <LetteringProvider title={titleStyle} label={labelStyle}>
+      {children}
+    </LetteringProvider>
+  )
+  if (!titleStyle) return lettered
+  return (
+    <DialogHeaderStyleProvider tone='standard' titleStyle={titleStyle}>
+      {lettered}
+    </DialogHeaderStyleProvider>
+  )
+}
+
 export function RootLayout({ pack, store, persistor }: RootLayoutProps) {
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -206,35 +224,37 @@ export function RootLayout({ pack, store, persistor }: RootLayoutProps) {
           <PackProvider pack={pack}>
             <Fonts>
               <Providers store={store} persistor={persistor}>
-                <Theme>
-                  <ProfilesProvider>
-                    {/* Inside Providers' PersistGate, so the game a cold launch resumes (read once, as
+                <DialogTitles>
+                  <Theme>
+                    <ProfilesProvider>
+                      {/* Inside Providers' PersistGate, so the game a cold launch resumes (read once, as
                     it mounts) is the saved one. */}
-                    <LastActiveGameProvider>
-                      <GameProviders games={pack.games}>
-                        <PackRoot pack={pack}>
-                          <GatedApp>
-                            <HapticGatedToastProvider>
-                              {/* Wraps the stack (rather than sitting beside it like UpdateDialog)
+                      <LastActiveGameProvider>
+                        <GameProviders games={pack.games}>
+                          <PackRoot pack={pack}>
+                            <GatedApp>
+                              <HapticGatedToastProvider>
+                                {/* Wraps the stack (rather than sitting beside it like UpdateDialog)
                               because Home's tiles and the loadout's How to Play row reach it through
                               context (see GuideHost). Inside the toast provider because the card renders
                               through a Portal, and inside the gate so it mounts together with Home rather
                               than before it. */}
-                              <GuideHost>
-                                <AppStack />
-                              </GuideHost>
-                              {/* historyButton/clearButton off: there's no toast history to open, and a
+                                <GuideHost>
+                                  <AppStack />
+                                </GuideHost>
+                                {/* historyButton/clearButton off: there's no toast history to open, and a
                               control row for it above the toast stack would go nowhere. limit pins the
                               package's current default (3) so a future toaster release can't change it. */}
-                              {pack.Toaster ? <PackToaster Toaster={pack.Toaster} /> : <FramedToaster />}
-                              <UpdateDialog />
-                            </HapticGatedToastProvider>
-                          </GatedApp>
-                        </PackRoot>
-                      </GameProviders>
-                    </LastActiveGameProvider>
-                  </ProfilesProvider>
-                </Theme>
+                                {pack.Toaster ? <PackToaster Toaster={pack.Toaster} /> : <FramedToaster />}
+                                <UpdateDialog />
+                              </HapticGatedToastProvider>
+                            </GatedApp>
+                          </PackRoot>
+                        </GameProviders>
+                      </LastActiveGameProvider>
+                    </ProfilesProvider>
+                  </Theme>
+                </DialogTitles>
               </Providers>
             </Fonts>
           </PackProvider>

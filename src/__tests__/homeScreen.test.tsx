@@ -67,6 +67,8 @@ async function nextFrame() {
   })
 }
 
+const TITLE_STYLE = { fontFamily: 'AlphaSketch' }
+
 beforeEach(() => {
   jest.useFakeTimers()
   mockWindow = PHONE
@@ -80,6 +82,17 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers()
+})
+
+// A pack's title lettering (AlphaTastic's title font) on each game's card title, and nowhere else on it.
+describe("a pack's title style", () => {
+  it("letters each game's card title, leaving its blurb alone", async () => {
+    const game = standInGame('trap', { blurb: 'Box the other rider in.' })
+    await renderHome(standInPack([game], { titleStyle: TITLE_STYLE }))
+
+    expect([screen.getByText(game.title).props.style].flat(Infinity)).toContainEqual(TITLE_STYLE)
+    expect([screen.getByText(game.blurb).props.style].flat(Infinity)).not.toContainEqual(TITLE_STYLE)
+  })
 })
 
 describe("a row's blurb", () => {

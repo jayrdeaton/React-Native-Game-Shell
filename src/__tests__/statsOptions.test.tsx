@@ -132,6 +132,41 @@ describe("a guest's own stats (guestStats)", () => {
   })
 })
 
+describe("a pack's title style", () => {
+  it("letters the tabs in the pack's label style", async () => {
+    const labelStyle = { fontFamily: 'AlphaSketch' }
+    await renderStats({ labelStyle })
+
+    for (const button of mockTabs.mock.lastCall![0].buttons) expect(button.labelStyle).toBe(labelStyle)
+  })
+
+  it('letters the screen title', async () => {
+    const titleStyle = { fontFamily: 'AlphaSketch' }
+    await renderStats({ titleStyle })
+
+    expect(lastStatsScreen().titleStyle).toBe(titleStyle)
+  })
+})
+
+describe("the pack's own player (useStatsPlayer)", () => {
+  it('opens the screen on them', async () => {
+    mockSeatOne = null
+    await renderStats({ useStatsPlayer: () => 'ada' })
+
+    expect(lastPicker('stats-player').value).toBe('ada')
+    expect(screen.getByTestId('stats-klondike')).toHaveTextContent('ada')
+  })
+
+  it('opens on Everyone for no profile, or one not on the roster', async () => {
+    mockSeatOne = 'ada'
+    await renderStats({ useStatsPlayer: () => null })
+    expect(screen.getByTestId('stats-klondike')).toHaveTextContent('null')
+
+    await renderStats({ useStatsPlayer: () => 'gone' })
+    expect(lastPicker('stats-player').value).toBe('__everyone__')
+  })
+})
+
 describe("the pack's own achievement list", () => {
   const AchievementList = ({ profileId }: { profileId: string | null }) => <Text testID='pack-achievements'>{String(profileId)}</Text>
 

@@ -5,6 +5,7 @@ import type { MenuOption } from '@tastic/hud/lobby'
 import type { FontSource } from 'expo-font'
 import type { Href, Stack } from 'expo-router'
 import type { ComponentProps, ComponentType, ReactNode } from 'react'
+import type { TextStyle } from 'react-native'
 import type { Action, Reducer } from 'redux'
 
 import type { ShellState } from './redux/shellState'
@@ -304,6 +305,14 @@ export interface PackDefinition {
   fonts?: Record<string, FontSource>
   // The typeface every Paper text variant is set in (auto-paper's Provider). Unset is Paper's own.
   fontFamily?: string
+  // The lettering of the pack's titles alone (a title font, AlphaTastic's), laid over each title's own
+  // type: Home's game cards, the stats screen's title and game headings, and every hud dialog's title
+  // (through hud's DialogHeaderStyleProvider, in the standard tone). Unset, titles keep their type.
+  titleStyle?: TextStyle
+  // The lettering of the pack's small labels alone, laid over each one's own type: the stats screen's
+  // tabs and section headings, the Settings sheet's sections and every picker pill (through hud's
+  // LetteringProvider). Unset, labels keep their type.
+  labelStyle?: TextStyle
   // The version label in Settings: src/constants/release.ts's otaVersion, which the OTA tooling bumps.
   otaVersion: number
   // The pack's own Settings sections (how cards look, how play is helped along), in every Settings
@@ -362,6 +371,11 @@ export interface PackDefinition {
   // The stats screen keeps a guest's stats under GUEST_PLAYER_ID: a Guest entry in the player picker
   // once a profile exists, and the screen opens on whoever is in seat 1.
   guestStats?: boolean
+  // The profile the stats screen opens on, for a pack that keeps its own idea of who is playing (a
+  // hook, called on every render of the screen; only its value as the screen mounts is used): the
+  // player picker starts there, and on Everyone when it's null or not a profile. Without it, Everyone
+  // (or seat 1's player, with guestStats).
+  useStatsPlayer?: () => string | null
   // One achievement list across the pack's games, on the Achievements tab (the game picker hidden there).
   AchievementList?: ComponentType<{ profileId: string | null }>
   // Tabs of the pack's own between Stats and Achievements.

@@ -81,6 +81,8 @@ const useNoPackReset = () => null
 
 // No placement of the pack's own: hud places the pickers' menus itself.
 const noPickerAlign = () => undefined
+// No player of the pack's own to open on.
+const useNoStatsPlayer = (): string | null => null
 
 function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
   const pack = usePack()
@@ -92,10 +94,13 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
 
   const [tab, setTab] = useState<string>(STATS)
   const [gameId, setGameId] = useState<string>(ALL_GAMES)
-  // Opens on whoever is in seat 1 (Guest for a guest) where the pack keeps a guest's stats, else on
-  // Everyone. Self-heals to Everyone if the selected profile is deleted while this screen is mounted, and
-  // from Guest once there is no profile (Everyone is then just the guest).
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(() => (pack.guestStats ? (lastSelected[1] ?? GUEST_PLAYER_ID) : null))
+  // Opens on the pack's own player where it says who is playing (PackDefinition.useStatsPlayer), on
+  // whoever is in seat 1 (Guest for a guest) where the pack keeps a guest's stats, else on Everyone.
+  // Self-heals to Everyone if the selected profile is deleted while this screen is mounted, and from
+  // Guest once there is no profile (Everyone is then just the guest).
+  const useStatsPlayer = pack.useStatsPlayer ?? useNoStatsPlayer
+  const statsPlayer = useStatsPlayer()
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(() => (pack.useStatsPlayer ? statsPlayer : pack.guestStats ? (lastSelected[1] ?? GUEST_PLAYER_ID) : null))
   const profileId = selectedProfileId && profiles.length > 0 && ((pack.guestStats && selectedProfileId === GUEST_PLAYER_ID) || profiles.some((p) => p.id === selectedProfileId)) ? selectedProfileId : null
 
   const games = gameId === ALL_GAMES ? pack.games : pack.games.filter((g) => g.id === gameId)
@@ -106,7 +111,11 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
 
   const playerOptions = useMemo<OptionPickerOption<string>[]>(() => [{ value: EVERYONE, label: 'Everyone', icon: 'account-group' }, ...(pack.guestStats ? [{ value: GUEST_PLAYER_ID, label: 'Guest', icon: 'account-outline' }] : []), ...profiles.map((p) => ({ value: p.id, label: p.name, icon: 'account', color: pack.previewColor ? pack.previewColor(p.color, dark) : p.color }))], [profiles, pack, dark])
   const gameOptions = useMemo<OptionPickerOption<string>[]>(() => [{ value: ALL_GAMES, label: 'All Games', icon: 'view-grid-outline' }, ...pack.games.map((g) => ({ value: g.id, label: g.title }))], [pack.games])
-  const tabButtons = useMemo(() => (packTabs.length > 0 ? [{ value: STATS, label: 'Stats' }, ...packTabs.map(({ value, label }) => ({ value, label })), { value: ACHIEVEMENTS, label: 'Achievements' }].map((button) => ({ ...button, style: LABEL_WIDE_TAB })) : TABS), [packTabs])
+  // The pack's label lettering (PackDefinition.labelStyle) on each tab.
+  const tabButtons = useMemo(() => {
+    const buttons = packTabs.length > 0 ? [{ value: STATS, label: 'Stats' }, ...packTabs.map(({ value, label }) => ({ value, label })), { value: ACHIEVEMENTS, label: 'Achievements' }].map((button) => ({ ...button, style: LABEL_WIDE_TAB })) : TABS
+    return pack.labelStyle ? buttons.map((button) => ({ ...button, labelStyle: pack.labelStyle })) : buttons
+  }, [packTabs, pack.labelStyle])
   const title = tab === STATS ? 'Stats' : tab === ACHIEVEMENTS ? 'Achievements' : (packTab?.label ?? '')
 
   // Reset: the pack's own (PackDefinition.resetStats) follows the player picker, one player's or
@@ -129,7 +138,7 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
   const PackTabContent = packTab?.Content
 
   return (
-    <BaseStatsScreen title={title} onBack={safeBack} insets={insets} onReset={reset.onReset} resetLabel={reset.label} resetConfirmTitle={reset.title} resetConfirmBody={reset.body} fg={pack.foreground} bg={pack.Backdrop ? 'transparent' : undefined}>
+    <BaseStatsScreen title={title} titleStyle={pack.titleStyle} onBack={safeBack} insets={insets} onReset={reset.onReset} resetLabel={reset.label} resetConfirmTitle={reset.title} resetConfirmBody={reset.body} fg={pack.foreground} bg={pack.Backdrop ? 'transparent' : undefined}>
       {/* Inside the page, not before it: BaseStatsScreen paints an opaque full-screen container that
       would hide a tap catcher placed underneath it. Over the stat sections and under the open
       filters (pressAway's zIndex sits below filtersOpen's), so a tap anywhere on the page but a
@@ -169,13 +178,14 @@ function resetFor(pack: PackDefinition, packReset: ((profileId: string | null) =
 // One game's part of the page: its own sections, under its name when more than one game is shown. A
 // game with no achievement list of its own shows nothing on Achievements.
 function GameStats({ game, tab, profileId, showTitle, titleColor }: { game: PackGameDefinition; tab: string; profileId: string | null; showTitle: boolean; titleColor: string }) {
+  const { titleStyle } = usePack()
   const { StatsSections, AchievementList } = game
   const Sections = tab === STATS ? StatsSections : AchievementList
   if (!Sections) return null
   return (
     <View style={styles.game}>
       {showTitle && (
-        <Text variant='titleLarge' style={[styles.gameTitle, { color: titleColor }]}>
+        <Text variant='titleLarge' style={[styles.gameTitle, { color: titleColor }, titleStyle]}>
           {game.title}
         </Text>
       )}
