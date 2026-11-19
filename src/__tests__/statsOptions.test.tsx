@@ -1,5 +1,6 @@
 import type { AlignResult } from '@tastic/hud/chrome'
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
+import { router } from 'expo-router'
 import { createRef, type ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
@@ -103,7 +104,7 @@ describe("a guest's own stats (guestStats)", () => {
   it('offer Guest between Everyone and the profiles, and hand the sections the guest id', async () => {
     await renderStats({ guestStats: true })
 
-    expect(lastPicker('stats-player').options.map((option: { value: string }) => option.value)).toEqual(['__everyone__', GUEST_PLAYER_ID, 'ada'])
+    expect(lastPicker('stats-player').options.map((option: { value: string }) => option.value)).toEqual(['__everyone__', GUEST_PLAYER_ID, 'ada', '__manage__'])
     expect(screen.getByTestId('stats-klondike')).toHaveTextContent(GUEST_PLAYER_ID)
   })
 
@@ -115,11 +116,11 @@ describe("a guest's own stats (guestStats)", () => {
     expect(screen.getByTestId('stats-klondike')).toHaveTextContent('ada')
   })
 
-  it('show Everyone, with no picker, while there is no profile', async () => {
+  it('show Everyone and Manage, with no Guest, while there is no profile', async () => {
     mockProfiles = []
     await renderStats({ guestStats: true })
 
-    expect(lastPicker('stats-player')).toBeUndefined()
+    expect(lastPicker('stats-player').options.map((option: { value: string }) => option.value)).toEqual(['__everyone__', '__manage__'])
     expect(screen.getByTestId('stats-klondike')).toHaveTextContent('null')
   })
 
@@ -127,8 +128,20 @@ describe("a guest's own stats (guestStats)", () => {
     mockSeatOne = 'ada'
     await renderStats()
 
-    expect(lastPicker('stats-player').options.map((option: { value: string }) => option.value)).toEqual(['__everyone__', 'ada'])
+    expect(lastPicker('stats-player').options.map((option: { value: string }) => option.value)).toEqual(['__everyone__', 'ada', '__manage__'])
     expect(screen.getByTestId('stats-klondike')).toHaveTextContent('null')
+  })
+})
+
+// Jay, 2026-11-19: always there, with Manage at its end, which opens the Profiles screen.
+describe('the player picker', () => {
+  it('opens the Profiles screen from Manage, keeping the player shown', async () => {
+    await renderStats()
+
+    await pick('stats-player', '__manage__')
+
+    expect(router.push).toHaveBeenCalledWith('/profiles')
+    expect(lastPicker('stats-player').value).toBe('__everyone__')
   })
 })
 

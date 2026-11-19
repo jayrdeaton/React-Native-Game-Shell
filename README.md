@@ -8,6 +8,9 @@ leave out its seat 2 and its loadout, come back on a cold launch, and show a pre
 pack for one player at a time (CardTastic, Solitaire renamed) can lay its own table, theme, toaster,
 How to Play and stats tabs into the same screens.
 
+The stats screen's player picker is always there, with no profile yet too: Everyone, each profile
+(and Guest, with `guestStats`, once one exists), then Manage, which opens the Profiles screen.
+
 Built from the shell PuckTastic and DuelTastic each carried in `src/shell/` (made identical on
 2026-10-28), so the packs and the next ones (CardTastic) share one copy. Part of the `@tastic`
 package ecosystem, on [`@tastic/hud`](https://github.com/jayrdeaton/react-native-hud),

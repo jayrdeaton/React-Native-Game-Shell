@@ -1,6 +1,7 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { BaseStatsScreen, type PopoverHost, PressAwayOverlay, ScreenFrame, usePopoverHost } from '@tastic/hud/chrome'
 import { getOptionPickerContentSize, OptionPicker, type OptionPickerOption } from '@tastic/profile'
+import { router } from 'expo-router'
 import { type ReactNode, useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { SegmentedButtons, Text } from 'react-native-paper'
@@ -11,6 +12,7 @@ import { SEGMENT_RADIUS, SEGMENT_THEME } from '../components/segmentTheme'
 import { useProfiles } from '../hooks/useProfiles'
 import { safeBack } from '../navigation'
 import { usePack } from '../PackContext'
+import { PROFILES_HREF } from '../routes'
 import { GUEST_PLAYER_ID, type PackDefinition, type PackGameDefinition, type PackStatsTab } from '../types'
 
 // Two tabs, as on Solitaire's stats screen: a page with every game's stats above the achievements
@@ -38,12 +40,16 @@ const ALL_GAMES = '__all__'
 
 const PLAYER_PICKER_ID = 'stats-player'
 const GAME_PICKER_ID = 'stats-game'
+// The player picker's last row: not a player, the way to the Profiles screen.
+const MANAGE = '__manage__'
+const MANAGE_OPTION: OptionPickerOption<string> = { value: MANAGE, label: 'Manage', icon: 'account-cog-outline', dividerBefore: true }
 
 // Widest the column gets in the wide layout (a landscape phone, a desktop window): a list of stat
 // rows stretched across an 874pt-wide screen reads badly. Upright it's never capped.
 const STATS_MAX_WIDTH = 640
 
-// Every game's stats and achievements on one screen, filtered by player (Everyone, or one profile)
+// Every game's stats and achievements on one screen, filtered by player (Everyone, or one profile, the
+// picker always there with Manage at its end)
 // and by game (All Games, or one), like Solitaire's. Each game keeps its own stats and its own
 // achievements; this screen only shows them side by side. With two seats there's no one player to
 // open on, so it opens on Everyone, and guests count only toward Everyone: two guests in one match
@@ -109,7 +115,9 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
   // One achievement list across the pack's games doesn't narrow to a game, so the game picker goes.
   const showGamePicker = !(tab === ACHIEVEMENTS && pack.AchievementList)
 
-  const playerOptions = useMemo<OptionPickerOption<string>[]>(() => [{ value: EVERYONE, label: 'Everyone', icon: 'account-group' }, ...(pack.guestStats ? [{ value: GUEST_PLAYER_ID, label: 'Guest', icon: 'account-outline' }] : []), ...profiles.map((p) => ({ value: p.id, label: p.name, icon: 'account', color: pack.previewColor ? pack.previewColor(p.color, dark) : p.color }))], [profiles, pack, dark])
+  // Always there (Jay, 2026-11-19), with no profile yet too: Everyone, then each profile, then Manage, which
+  // opens the Profiles screen to make one.
+  const playerOptions = useMemo<OptionPickerOption<string>[]>(() => [{ value: EVERYONE, label: 'Everyone', icon: 'account-group' }, ...(pack.guestStats && profiles.length > 0 ? [{ value: GUEST_PLAYER_ID, label: 'Guest', icon: 'account-outline' }] : []), ...profiles.map((p) => ({ value: p.id, label: p.name, icon: 'account', color: pack.previewColor ? pack.previewColor(p.color, dark) : p.color })), MANAGE_OPTION], [profiles, pack, dark])
   const gameOptions = useMemo<OptionPickerOption<string>[]>(() => [{ value: ALL_GAMES, label: 'All Games', icon: 'view-grid-outline' }, ...pack.games.map((g) => ({ value: g.id, label: g.title }))], [pack.games])
   // The pack's label lettering (PackDefinition.labelStyle) on each tab.
   const tabButtons = useMemo(() => {
@@ -127,7 +135,7 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
 
   // The pack's own placement for the pickers' menus (PackDefinition.usePickerAlign), sized from their rows.
   const usePickerAlign = pack.usePickerAlign ?? noPickerAlign
-  const playerSize = getOptionPickerContentSize(playerOptions.length)
+  const playerSize = getOptionPickerContentSize(playerOptions)
   const gameSize = getOptionPickerContentSize(gameOptions.length)
   const playerAlign = usePickerAlign(pickerHost.openId === PLAYER_PICKER_ID, playerSize.width, playerSize.height)
   const gameAlign = usePickerAlign(pickerHost.openId === GAME_PICKER_ID, gameSize.width, gameSize.height)
@@ -149,7 +157,7 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
       {/* Takes a press on its own blank parts (the gap, an open menu's padding) while a menu is open, so
       it never reaches StatsPressAway. */}
       <View style={[styles.filters, pickerHost.openId !== null && styles.filtersOpen]} onStartShouldSetResponder={() => pickerHost.openId !== null}>
-        {profiles.length > 0 && <OptionPicker id={PLAYER_PICKER_ID} host={pickerHost} options={playerOptions} value={profileId ?? EVERYONE} onChange={(value) => setSelectedProfileId(value === EVERYONE ? null : value)} color={colors.primary} dark={dark} icon={profileId ? 'account' : 'account-group'} alignOverride={playerAlign} triggerStyle={triggerStyle} />}
+        <OptionPicker id={PLAYER_PICKER_ID} host={pickerHost} options={playerOptions} value={profileId ?? EVERYONE} onChange={(value) => (value === MANAGE ? router.push(PROFILES_HREF) : setSelectedProfileId(value === EVERYONE ? null : value))} color={colors.primary} dark={dark} icon={profileId ? 'account' : 'account-group'} alignOverride={playerAlign} triggerStyle={triggerStyle} />
         {showGamePicker && <OptionPicker id={GAME_PICKER_ID} host={pickerHost} options={gameOptions} value={gameId} onChange={setGameId} color={colors.primary} dark={dark} icon='view-grid-outline' alignOverride={gameAlign} triggerStyle={triggerStyle} />}
       </View>
 
