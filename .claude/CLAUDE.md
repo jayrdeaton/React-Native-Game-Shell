@@ -101,7 +101,7 @@ step 3's additions.
 | `components/` | `Providers` (Redux, PersistGate, Edge Guard, feedback-press with the UI sounds, Keep Awake), `Theme` (auto-paper's Provider over the `theme` key), `Fonts`, `GuideHost`/`useGameGuide` (each game's How to Play), `SettingsDialog`, `OpponentPicker`, `UpdateDialog`, `imageGameIcon`. |
 | `hooks/` | `useActiveRound`, `useAppSettings`, `useOpponent`, `useProfiles`/`ProfilesProvider`, `useSeatColors`, `useLastActiveGame`/`LastActiveGameProvider` (the resume, internal), `useFrozenWhileHidden`. |
 | `redux/` | `createPackStore`, `createShellReducers`/`ShellState`, and the shell's slices (`appSettings`, `liveplay`, `opponent`, `profileSelection`, `seatColors`, and `lastActiveGame` in a pack with a resumable game), `createGameGuideSlice`, `onProfileRemoved`/`forgetProfileAchievements`. |
-| `screens/` | `HomeScreen` (and `homeLayout.ts`, its tiles' geometry), `LoadoutScreen` (with `LoadoutRoute` and `PlayRoute` in `GameRoute.tsx`), `ProfilesRoute`, `StatsScreen`. |
+| `screens/` | `HomeScreen` (and `homeLayout.ts`, its tiles' geometry), `LoadoutScreen` (with `LoadoutRoute` and `PlayRoute` in `GameRoute.tsx`), `ProfilesRoute`, `EditProfileRoute`, `StatsScreen`. |
 | `playerSettings.ts` | `createPlayerSettings`, `seatPlayerKey`: a game's settings and controls, kept per player. |
 | `gameStats.tsx` | `createGameStats`: a game's stats and achievements slice and context. |
 
@@ -645,3 +645,15 @@ CardTastic gave every game a setup screen, which changed three things it had ask
 - **`PackDefinition.resumeHref`** picks where a cold launch goes back into a resumable game, for a pack with more than one way to be playing it (CardTastic's Daily Deals). Null or unset is the play screen.
 
 Tests: `loadoutOptions`' "a game that places the seat buttons itself", `homeOptions`' "where a cold launch resumes" and "a pack that leaves the player to its loadouts", `homeLayout`'s hero case.
+
+## A profile's own Edit Profile screen (2026-11-20, released in 0.15.0)
+
+Jay made a profile's edit screen a real route in `@tastic/profile` (its CLAUDE.md, "The Edit Profile screen"): `ProfilesManager` is the list and calls `onEdit(id)`, and the new `EditProfileScreen` takes the id (or `NEW_PROFILE_ID`, `'new'`) and the roster callbacks, saving on the back arrow, Done, a swipe back and a back button. The shell's half:
+
+- **`EditProfileRoute`** (`screens/EditProfileRoute.tsx`, exported): `EditProfileScreen` for the route's `id` (`useLocalSearchParams`), in hud's `ScreenFrame` with `portalHost` (the delete confirm moved here from Profiles) and the same 640pt column, starting a new profile on `newProfileColor` or auto-paper's first swatch, `safeBack` as its `onBack`, transparent over a pack's Backdrop in its foreground. Deleting still goes through `useProfiles().deleteProfile`, so every game's reducers answer the removal (`onProfileRemoved`).
+- **`ProfilesRoute`** hands `ProfilesScreen` only the roster, `onEdit` (a push of `profileHref(id)`, `routes.ts`, `/profile/[id]`) and `onBack`; its frame lost `portalHost` (nothing on it portals now).
+- **`PickerAlign` lost its `options` argument** (`maxContentWidth`): only Profiles' color swatch passed it, and there's no swatch popover any more (`@tastic/profile` removed `useColorPickerAlign`). A pack's hook that still takes the argument stays assignable. CardTastic's `useFrameAutoAlign` takes it and can drop it.
+- **What every pack needs, since expo-router only reads routes in the app:** a `src/app/profile/[id].tsx` rendering `EditProfileRoute` (with the app's `generateMetadata`, kept out of search results like `profiles.tsx`; and, for a web build that's a static export, nothing to list: the page is a client route, like `profiles`). The packs with `ProfilesRoute` today: CardTastic, DragonHoard, DuelTastic, Hangman, HellFleet, Labyrinth and PuckTastic. Without the route file, tapping a profile pushes to a page the app doesn't have.
+- **Needs `@tastic/profile` 0.22.0 or later** (`EditProfileScreen`): the peer floor is `>=0.22.0`, and the dev dependency 0.24.0 (with `@tastic/hud` 0.36.0, which profile 0.23+ needs at least 0.35 of). A minor, breaking for a pack: every pack with `ProfilesRoute` needs the `profile/[id]` route file, and profile 0.22+ is native, so a new build. Seen in CardTastic's web build (headless Chrome): Profiles' New Profile opening Edit Profile, a profile named and saved, and one deleted from its screen.
+- Tests: `profilesRoute.test.tsx` (the list's frame and `onEdit` pushing `/profile/[id]`, the edit route's frame with `portalHost`, its id, a new profile's color, and both over a Backdrop).
+

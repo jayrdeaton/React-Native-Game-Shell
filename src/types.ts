@@ -384,17 +384,17 @@ export interface PackDefinition {
   resetStats?: PackStatsReset
   // false leaves out each game's name over its sections on All Games, where its sections name it.
   statsGameTitles?: boolean
-  // A new profile's starting color on Profiles. Unset is auto-paper's first swatch.
+  // A new profile's starting color on its Edit Profile screen. Unset is auto-paper's first swatch.
   newProfileColor?: string
   // Where a picker's menu opens (its alignOverride) on Home (seat 1's button), a loadout's one-human row
-  // (both seat buttons; 2 Player keeps each menu in its own player's half), the stats screen (its two
-  // pickers) and Profiles (a profile's color swatch). It was added because hud's own placement measured
-  // a button in a frame turned by @tastic/core's drawn rotation against the upright window; nothing turns
-  // since core 0.15, so a pack may no longer need one.
-  // `open` is whether this picker's menu is open, the size is its content's, and `maxContentWidth` is a
-  // capped column's width the menu stays inside (Profiles' roster). Unset is hud's own placement.
+  // (both seat buttons; 2 Player keeps each menu in its own player's half) and the stats screen (its two
+  // pickers). It was added because hud's own placement measured a button in a frame turned by
+  // @tastic/core's drawn rotation against the upright window; nothing turns since core 0.15, so a pack
+  // may no longer need one. (Profiles' color swatch used it too, with a capped column's width, until a
+  // profile got its own Edit Profile screen with the swatches on it, 2026-11-20.)
+  // `open` is whether this picker's menu is open, and the size is its content's. Unset is hud's own placement.
   usePickerAlign?: PickerAlign
 }
 
 // What PackDefinition.usePickerAlign is: a hook, called on every render of the screen it serves.
-export type PickerAlign = (open: boolean, contentWidth: number, contentHeight: number, options?: { maxContentWidth?: number }) => AlignResult
+export type PickerAlign = (open: boolean, contentWidth: number, contentHeight: number) => AlignResult

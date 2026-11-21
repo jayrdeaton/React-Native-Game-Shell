@@ -5,6 +5,7 @@ export { RootLayout } from './RootLayout'
 export { type FeedbackSounds, type GameDefinition, type GameGuide, type GameIconProps, type GameLoadout, type GamePreviewProps, type GameRulesProps, GUEST_PLAYER_ID, type GuidelessGameDefinition, type HeroTitleProps, type HomeTab, humanSeatsFor, type LoadoutOptionsProps, type PackDefinition, type PackGameDefinition, type PackGuide, type PackStatsReset, type PackStatsSectionsProps, type PackStatsTab, type PickerAlign, type RoundMode, roundModeFor, type Seat, type SeatControlLook, type SeatTwo, seatTwoFor, type StackScreenOptions } from './types'
 
 // The screens behind an app's routes (src/app/ stays in the app: expo-router only reads routes there).
+export { EditProfileRoute } from './screens/EditProfileRoute'
 export { LoadoutRoute, PlayRoute } from './screens/GameRoute'
 export { HomeScreen } from './screens/HomeScreen'
 // The shape of the box a game's Preview draws in on Home (width / height).
