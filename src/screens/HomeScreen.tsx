@@ -2,8 +2,8 @@ import { defaultColors, FadingScrollView, useAutoPaperTheme } from '@rific/auto-
 import { IconButton, Pressable } from '@rific/feedback-press'
 import { PressAwayOverlay, usePopoverHost, useWellColors, WELL_SHADOW } from '@tastic/hud/chrome'
 import { getProfilePickerContentSize, type Profile, ProfilePicker, type ProfilePickerColorSection } from '@tastic/profile'
-import { Redirect, router, useIsFocused } from 'expo-router'
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { router, useFocusEffect, useIsFocused } from 'expo-router'
+import { type ReactNode, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState, type AppStateStatus, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollView, StyleSheet, View } from 'react-native'
 import { Icon, Portal, SegmentedButtons, Text } from 'react-native-paper'
 
@@ -28,7 +28,8 @@ import { HOME_GRID_GAP, HOME_LEFT_PANE_PICKER_GAP, HOME_TILE_PADDING, HOME_TOP_B
 // (PackDefinition.homeTabs) shows one tab's games at a time, from a switch over the rows.
 //
 // A cold launch that finds the player left the app inside a resumable game's play screen
-// (GameDefinition.resumable) goes straight back there instead, before the menu ever paints. The
+// (GameDefinition.resumable) goes straight back there instead, before the menu ever paints, with the
+// game's setup screen and this Home beneath it (useResume). The
 // pack's own How to Play (PackDefinition.guide) shows by itself on a first launch, held back while
 // that launch is about to drop into a game: it must never open over a game in progress.
 export function HomeScreen() {
@@ -47,8 +48,40 @@ export function HomeScreen() {
   useEffect(() => {
     if (!resumeGame) autoShowPack()
   }, [resumeGame, autoShowPack])
-  if (resumeGame) return <Redirect href={pack.resumeHref?.(resumeGame.id) ?? playHref(resumeGame.id)} />
-  return <HomeMenu />
+  useResume(resumeGame)
+  return useMenuShown(!!resumeGame) ? <HomeMenu /> : null
+}
+
+// The resume itself: the game's setup screen (when it has one), then its play screen (or where the pack
+// says, PackDefinition.resumeHref), pushed over this Home, the stack the player had when they left. Every
+// way back from there is then a pop, which slides the right way: the game's back to its setup screen, that
+// one's back to Home, and Android's back the same (with the play screen alone on the stack, it closed the
+// app). A Redirect replaced Home instead, and with nothing beneath the game each of those backs had to
+// replace the screen too, which iOS animates as a push: the screen came in from the right, as if going
+// forward. Run once, on focus, as Redirect runs its own (the stack is ready by then). Both pushes are
+// queued in one go, so the stack takes them in one update and only the play screen slides in.
+function useResume(game: PackGameDefinition | null) {
+  const pack = usePack()
+  const done = useRef(false)
+  useFocusEffect(
+    useCallback(() => {
+      if (!game || done.current) return
+      done.current = true
+      if (game.useLoadout) router.push(loadoutHref(game.id))
+      router.push(pack.resumeHref?.(game.id) ?? playHref(game.id))
+    }, [game, pack])
+  )
+}
+
+// Whether Home draws its menu. A Home resuming a game draws nothing until the game covers it (Home no
+// longer focused), so a launch never shows the menu ahead of the game, and then draws it at low priority
+// (useDeferredValue), behind the game's own first renders. From then on it's mounted beneath the game like
+// any Home that opened one, so going back to it is quick.
+function useMenuShown(resuming: boolean): boolean {
+  const isFocused = useIsFocused()
+  const [covered, setCovered] = useState(false)
+  if (resuming && !covered && !isFocused) setCovered(true)
+  return useDeferredValue(!resuming || covered)
 }
 
 function HomeMenu() {

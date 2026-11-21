@@ -166,8 +166,9 @@ them); nothing here has run in a browser or on a device.
    mounts (inside PersistGate, in `RootLayout`), never subscribed to; the provider's value never
    changes; any set or clear drops a pending resume (a deep link into a game can't later bounce into a
    stale one); an unchanged value is never rewritten. Home reads `consumeResumeGame()` once
-   (`useState`) and, for a game the pack has and that is resumable, renders a `Redirect` to its
-   `play/[game]` before its menu draws. `PlayRoute` sets the id as a resumable game's play screen
+   (`useState`) and, for a game the pack has and that is resumable, pushes its loadout (when it has
+   one) and then its `play/[game]` over itself before its menu draws (a `Redirect` until 2026-11-21,
+   see "Every back is a pop" below). `PlayRoute` sets the id as a resumable game's play screen
    mounts and clears it as it unmounts while the app is active (any back; backgrounding leaves it
    mounted). An unmount with the app not active keeps it: iOS terminating an app it hasn't suspended
    yet (swiped away from the app switcher soon after leaving it) stops every React Native surface
@@ -669,4 +670,12 @@ Jay, the same day as the Edit Profile route: a profile's online controls belong 
 ## The stats screen's pickers: captions, and games grouped by Home's tabs (2026-11-20, released in 0.17.0)
 
 Jay, on CardTastic's stats screen: the pills should say what they pick, and its 20 games want a Solitaire / Two Player split. The player pill's caption is PLAYER and the game pill's GAME (`OptionPicker`'s `caption`). With two or more `homeTabs`, the game picker is All Games, then a row per tab that opens a page (`@tastic/profile` 0.26.0's `OptionPicker` groups): an "All" row (`triggerLabel`, so the pill reads the tab's name) and the tab's games. A tab's All shows that tab's games and hands the pack `gameId` null with `gameIds` its games (`PackStatsSectionsProps.gameIds`, new; `[gameId]` for one game, null for All Games), so a pack can tell "All Two Player" from All Games. Without tabs the list is as before. Tests: `statsOptions.test.tsx`' "the pickers".
+
+## Every back is a pop (2026-11-21, released in 0.17.1)
+
+Jay saw a back slide the screen in from the right, as if going forward. iOS animates a replace as a push unless the incoming screen's `animationTypeForReplace` is `pop` (react-native-screens' `RNSScreenStack.mm` reads the new top screen's `replaceAnimation`), and Home's cold-launch resume was a `Redirect`, a replace, which left the game alone on the stack. So in CardTastic, after the app reopened into a game, the game's back arrow (`router.dismissTo` its loadout) had to replace the play screen with a new loadout, and the loadout's back (`safeBack`) had to replace that with a new Home: both slid in from the right. Android's back from the resumed game closed the app.
+- **The resume pushes** (`HomeScreen`'s `useResume`): the game's loadout, when it has one, then its play screen (or `resumeHref`), on focus, once, both queued in one go so the stack takes them in one update and only the play screen slides in. The stack is then what the player had when they left, so every back is a pop. Home draws nothing while it's still on top (`useMenuShown`), so a launch never shows the menu ahead of the game, then its menu at low priority (`useDeferredValue`) once the game covers it, so the way back finds it mounted.
+- **A replace slides as a pop everywhere but onto a play screen** (`RootLayout`'s `REPLACE_AS_BACK` in the stack's `screenOptions`, `REPLACE_AS_FORWARD` in the play screen's own options): what's left of replaces are ways back with nothing beneath (a deep link's back, `safeBack`'s fallback, a `Redirect` out of an unknown game), and the one that opens a play screen (a loadout link to a game with nothing to set up).
+- **Unchanged:** Android crossfades over a backdrop and the web doesn't animate a screen change, so neither had a direction to get wrong; Reduce Motion crossfades.
+- Tests: `resumeStack.test.tsx` runs the real Home and play route under expo-router's real in-memory router: the resumed stack is `[index, loadout/[game], play/[game]]` (or Home and the play screen for a game with nothing to set up, and `resumeHref`'s screen over the loadout), the game's `dismissTo` and the loadout's `safeBack` pop to the same route keys, and Android's back walks the same way; all five fail with the `Redirect` back. `packRoot.test.tsx`'s `a replace` checks the two options. Seen in CardTastic's web build in headless Chrome over CDP (with this tree yalc-linked): a cold load at `/` after leaving Klondike open landed on `/play/klondike` with the loadout and Home in the DOM beneath, the back arrow went to `/loadout/klondike` and the loadout's back to `/`, each a history pop. Not seen on iOS: no build of it was run.
 

@@ -145,6 +145,22 @@ describe("the root follows the app's theme", () => {
   })
 })
 
+// iOS slides a replaced screen in by the incoming screen's animationTypeForReplace (a push by default). A
+// replace is a way back everywhere but onto a play screen (safeBack's fallback, a dismissTo with nothing to
+// pop to, a Redirect out of an unknown game), so it slides back; onto a play screen it only ever opens one.
+describe('a replace', () => {
+  it('slides in as a step back, but onto a play screen, with or without a backdrop', async () => {
+    for (const overrides of [{}, { Backdrop: () => <View /> }]) {
+      mockStack.mockClear()
+      mockScreen.mockClear()
+      await renderRoot(overrides)
+
+      expect(lastScreenOptions().animationTypeForReplace).toBe('pop')
+      expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual(expect.objectContaining({ animationTypeForReplace: 'push' }))
+    }
+  })
+})
+
 describe("a pack's Backdrop", () => {
   const Backdrop = () => <View testID='backdrop' />
 
@@ -183,8 +199,8 @@ describe("the pack's root pieces", () => {
   it('hides the status bar on a play screen for the whole round, but where the game keeps it', async () => {
     await renderRoot()
 
-    expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true })
-    expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual({})
+    expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, animationTypeForReplace: 'push' })
+    expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual({ animationTypeForReplace: 'push' })
   })
 
   // Edge Guard's Android half: sticky immersive on a play screen (see RootLayout's PLAY_OPTIONS).
@@ -208,21 +224,21 @@ describe("the pack's root pieces", () => {
     it('hides both bars on every play screen while it is on, a game that keeps its status bar too', async () => {
       await renderWithEdgeGuard(true)
 
-      expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: true })
-      expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: true })
+      expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: true, animationTypeForReplace: 'push' })
+      expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: true, animationTypeForReplace: 'push' })
     })
 
     it('keeps the navigation bar while it is off, and leaves the status bar to the game', async () => {
       await renderWithEdgeGuard(false)
 
-      expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: false })
-      expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual({ navigationBarHidden: false })
+      expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: false, animationTypeForReplace: 'push' })
+      expect(playOptions()({ route: { params: { game: 'klondike' } } })).toEqual({ navigationBarHidden: false, animationTypeForReplace: 'push' })
     })
 
     it('hides nothing for a pack with edgeGuard false, even with the setting left on', async () => {
       await renderWithEdgeGuard(true, { edgeGuard: false })
 
-      expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: false })
+      expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, navigationBarHidden: false, animationTypeForReplace: 'push' })
     })
   })
 
@@ -232,7 +248,7 @@ describe("the pack's root pieces", () => {
     store.dispatch(appSettingsActions.initialize({ deferBottomEdgeGestures: true }))
     await render(<RootLayout pack={pack} store={store as never} persistor={{} as Persistor} />)
 
-    expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true })
+    expect(playOptions()({ route: { params: { game: 'pong' } } })).toEqual({ statusBarHidden: true, animationTypeForReplace: 'push' })
   })
 
   it("mounts the pack's own Provider around the stack", async () => {

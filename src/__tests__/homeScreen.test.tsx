@@ -28,6 +28,7 @@ jest.mock('expo-router', () => {
     router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: () => true },
     useIsFocused: () => mockFocused,
     useLocalSearchParams: () => mockParams,
+    useFocusEffect: (effect: () => void) => require('react').useEffect(effect, [effect]),
     Redirect: ({ href }: { href: unknown }) => <Text testID='redirect'>{JSON.stringify(href)}</Text>
   }
 })
@@ -149,11 +150,18 @@ describe('a resume', () => {
     const store = standInStore(pack, 'klondike')
     const wrapper = shellWrapper(pack, store)
 
-    // A cold launch: the first Home goes straight back to the game the app was left in, before its
-    // menu draws.
+    // A cold launch: the first Home pushes the game the app was left in over itself (a game with
+    // nothing to set up goes on alone), and draws nothing while it's still on top.
     await render(<HomeScreen key='launch' />, { wrapper })
-    expect(JSON.parse(screen.getByTestId('redirect').props.children)).toEqual(playHref)
+    expect(jest.mocked(router.push).mock.calls).toEqual([[playHref]])
+    expect(router.replace).not.toHaveBeenCalled()
     expect(mockHero).not.toHaveBeenCalled()
+
+    // Once the game covers it, Home draws its menu beneath, for the way back.
+    mockFocused = false
+    await screen.rerender(<HomeScreen key='launch' />)
+    expect(mockHero).toHaveBeenCalled()
+    expect(jest.mocked(router.push).mock.calls).toEqual([[playHref]])
 
     // The play screen it lands on keeps the game remembered (a relaunch now would resume it again).
     mockParams = { game: 'klondike' }
@@ -161,11 +169,23 @@ describe('a resume', () => {
     expect(screen.getByTestId('play-klondike')).toBeTruthy()
     expect(store.getState().lastActiveGame.gameId).toBe('klondike')
 
-    // Backing out unmounts the play screen and forgets the game; the Home it lands on is the menu.
+    // Backing out unmounts the play screen and forgets the game; a Home mounted after that is the
+    // menu, with nothing pushed.
+    mockFocused = true
+    mockHero.mockClear()
+    jest.mocked(router.push).mockClear()
     await screen.rerender(<HomeScreen key='back' />)
     expect(store.getState().lastActiveGame.gameId).toBeNull()
-    expect(screen.queryByTestId('redirect')).toBeNull()
+    expect(router.push).not.toHaveBeenCalled()
     expect(mockHero).toHaveBeenCalled()
+  })
+
+  it("puts a game's setup screen beneath it", async () => {
+    const solitaire = standInGame('solitaire', { resumable: true, seatTwo: undefined })
+    const withSetup = standInPack([solitaire], { HeroTitle: mockHero })
+    await render(<HomeScreen />, { wrapper: shellWrapper(withSetup, standInStore(withSetup, 'solitaire')) })
+
+    expect(jest.mocked(router.push).mock.calls).toEqual([[{ pathname: '/loadout/[game]', params: { game: 'solitaire' } }], [{ pathname: '/play/[game]', params: { game: 'solitaire' } }]])
   })
 
   // iOS terminating an app it hasn't suspended yet (swiped away from the app switcher) unmounts the
@@ -187,9 +207,11 @@ describe('a resume', () => {
     const wrapper = shellWrapper(pack, store)
 
     await render(<HomeScreen key='first' />, { wrapper })
+    jest.mocked(router.push).mockClear()
     await screen.rerender(<HomeScreen key='second' />)
 
-    expect(screen.queryByTestId('redirect')).toBeNull()
+    expect(router.push).not.toHaveBeenCalled()
+    expect(mockHero).toHaveBeenCalled()
   })
 
   it('remembers a resumable game while its play screen is up, and nothing else', async () => {
@@ -207,10 +229,8 @@ describe('a resume', () => {
 
   it("drops a saved game the pack doesn't have or that doesn't resume", async () => {
     await renderHome(pack, 'pong')
-    expect(screen.queryByTestId('redirect')).toBeNull()
-
     await renderHome(pack, 'gone')
-    expect(screen.queryByTestId('redirect')).toBeNull()
+    expect(router.push).not.toHaveBeenCalled()
   })
 })
 

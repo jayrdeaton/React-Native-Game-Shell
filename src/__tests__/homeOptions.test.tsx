@@ -1,5 +1,6 @@
 import type { AlignResult } from '@tastic/hud/chrome'
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native'
+import { router } from 'expo-router'
 import { createRef } from 'react'
 import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 
@@ -39,11 +40,10 @@ jest.mock('@rific/feedback-press', () => {
   }
 })
 jest.mock('expo-router', () => {
-  const { Text: RNText } = require('react-native')
   return {
     router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: () => true },
     useIsFocused: () => true,
-    Redirect: ({ href }: { href: unknown }) => <RNText testID='redirect'>{JSON.stringify(href)}</RNText>
+    useFocusEffect: (effect: () => void) => require('react').useEffect(effect, [effect])
   }
 })
 jest.mock('../components/GuideHost', () => ({ useGameGuide: () => mockGuide }))
@@ -94,7 +94,7 @@ describe("a pack's own How to Play on Home", () => {
 
     mockGuide.autoShowPack.mockClear()
     await renderHome({ guide: { version: 1, selectVersionSeen: () => 0, markSeen: () => ({ type: 'seen' }), getSteps: () => [] }, games: [standInGame('klondike', { resumable: true })] }, 'klondike')
-    expect(screen.getByTestId('redirect')).toBeTruthy()
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/play/[game]', params: { game: 'klondike' } })
     expect(mockGuide.autoShowPack).not.toHaveBeenCalled()
   })
 
@@ -162,14 +162,15 @@ describe('where a cold launch resumes', () => {
 
   it("is the game's play screen, or where the pack says", async () => {
     const pack = { games: [{ ...klondike, ...resumable }, spider, pong] }
+    const pushed = () => jest.mocked(router.push).mock.lastCall![0]
     await renderHome(pack, 'klondike')
-    expect(screen.getByTestId('redirect').props.children).toContain('/play/[game]')
+    expect(pushed()).toEqual({ pathname: '/play/[game]', params: { game: 'klondike' } })
 
     await renderHome({ ...pack, resumeHref: (game: string) => `/somewhere/${game}` as never }, 'klondike')
-    expect(screen.getByTestId('redirect').props.children).toContain('/somewhere/klondike')
+    expect(pushed()).toBe('/somewhere/klondike')
 
     await renderHome({ ...pack, resumeHref: () => null }, 'klondike')
-    expect(screen.getByTestId('redirect').props.children).toContain('/play/[game]')
+    expect(pushed()).toEqual({ pathname: '/play/[game]', params: { game: 'klondike' } })
   })
 })
 

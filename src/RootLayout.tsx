@@ -56,6 +56,16 @@ import type { PackDefinition, PackGameDefinition } from './types'
 const PLAY_OPTIONS = { statusBarHidden: true }
 const KEEP_STATUS_BAR_OPTIONS = {}
 
+// Which way a replace slides on iOS (react-native-screens: the incoming screen's replaceAnimation picks
+// it; a push unless told otherwise). A replace here is nearly always a way back with nothing beneath to
+// pop to: safeBack's fallback to Home, a dismissTo whose screen isn't on the stack (a game's back to its
+// setup screen after a deep link), a Redirect out of a game the pack doesn't have. So every screen slides
+// a replace in as a pop, from the left, except a play screen, which a replace only ever opens (a loadout
+// link to a game with nothing to set up). Android's crossfade over a backdrop and the web don't animate a
+// direction.
+const REPLACE_AS_BACK = { animationTypeForReplace: 'pop' as const }
+const REPLACE_AS_FORWARD = { animationTypeForReplace: 'push' as const }
+
 // The navigation theme is the root background too. React Navigation paints its theme's
 // `colors.background` on the layers around every screen (the ScreenStack's container on native, each
 // screen's wrapper on the web), and expo-router hands its container no theme, so that was always
@@ -95,7 +105,7 @@ function AppStack() {
     ({ route }: { route: { params?: object } }) => {
       const id = (route.params as { game?: string } | undefined)?.game
       const statusBarOptions = pack.games.some((g) => g.id === id && g.keepStatusBar) ? KEEP_STATUS_BAR_OPTIONS : PLAY_OPTIONS
-      return { ...statusBarOptions, ...edgeGuardOptions }
+      return { ...statusBarOptions, ...edgeGuardOptions, ...REPLACE_AS_FORWARD }
     },
     [pack.games, edgeGuardOptions]
   )
@@ -106,7 +116,7 @@ function AppStack() {
   }, [darkRoot, navigationBackground])
   const stack = (
     <NavigationThemeProvider value={navigationTheme}>
-      <Stack screenOptions={{ ...rootBackground, statusBarStyle, ...backdropOptions, ...packOptions }}>
+      <Stack screenOptions={{ ...rootBackground, statusBarStyle, ...REPLACE_AS_BACK, ...backdropOptions, ...packOptions }}>
         <Stack.Screen name='index' />
         <Stack.Screen name='play/[game]' options={playOptions} />
       </Stack>
