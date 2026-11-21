@@ -666,3 +666,7 @@ Jay, the same day as the Edit Profile route: a profile's online controls belong 
 - **One toast at a time** (Jay, 2026-11-20, every game): the shell's own toaster (a pack without its own `Toaster`) takes `limit={1}`, from 3; a newer toast takes the older one's place.
 - Tests: `packSections.test.tsx`' "Settings' Profile row" (seat 1's profile and its route, Guest and Profiles, left off a play screen), `profilesRoute.test.tsx`' "draws the pack's own sections".
 
+## The stats screen's pickers: captions, and games grouped by Home's tabs (2026-11-20, released in 0.17.0)
+
+Jay, on CardTastic's stats screen: the pills should say what they pick, and its 20 games want a Solitaire / Two Player split. The player pill's caption is PLAYER and the game pill's GAME (`OptionPicker`'s `caption`). With two or more `homeTabs`, the game picker is All Games, then a row per tab that opens a page (`@tastic/profile` 0.26.0's `OptionPicker` groups): an "All" row (`triggerLabel`, so the pill reads the tab's name) and the tab's games. A tab's All shows that tab's games and hands the pack `gameId` null with `gameIds` its games (`PackStatsSectionsProps.gameIds`, new; `[gameId]` for one game, null for All Games), so a pack can tell "All Two Player" from All Games. Without tabs the list is as before. Tests: `statsOptions.test.tsx`' "the pickers".
+

@@ -203,7 +203,7 @@ describe("the pack's own tabs", () => {
     await pick('stats-game', 'spider')
 
     expect(screen.getByTestId('records')).toBeTruthy()
-    expect(records.mock.lastCall![0]).toEqual({ profileId: null, gameId: 'spider' })
+    expect(records.mock.lastCall![0]).toEqual({ profileId: null, gameId: 'spider', gameIds: ['spider'] })
     expect(lastStatsScreen().title).toBe('Records')
     expect(screen.queryByTestId('stats-klondike')).toBeNull()
     const buttons = mockTabs.mock.lastCall![0].buttons
@@ -329,5 +329,50 @@ describe('the screen', () => {
 
     expect(lastStatsScreen().bg).toBeUndefined()
     expect(lastPicker('stats-game').triggerStyle).toBeUndefined()
+  })
+})
+
+// Jay, 2026-11-20: captions say what each pill picks, and with Home's tabs the game picker groups the games by them, a shorter list
+describe('the pickers', () => {
+  it('say what they pick', async () => {
+    await renderStats()
+    expect(lastPicker('stats-player').caption).toBe('Player')
+    expect(lastPicker('stats-game').caption).toBe('Game')
+  })
+
+  it("list every game without Home's tabs", async () => {
+    await renderStats()
+    expect(lastPicker('stats-game').options.map((o: { label: string }) => o.label)).toEqual(['All Games', 'Game klondike', 'Game spider'])
+  })
+
+  describe("with Home's tabs", () => {
+    const duo = standInGame('war', { StatsSections: gameSections('war'), AchievementList: undefined, resetStats: undefined })
+    const pack = () =>
+      standInPack([...games, duo], {
+        homeTabs: [
+          { label: 'Solitaire', includes: (g) => g.id !== 'war' },
+          { label: 'Two Player', includes: (g) => g.id === 'war' }
+        ]
+      })
+    const packStats = jest.fn()
+    const PackStats = (props: object) => (packStats(props), null)
+
+    it('group the games by tab, each with an All row named by its tab on the pill', async () => {
+      await renderStats({}, pack())
+      const options = lastPicker('stats-game').options as { label: string; triggerLabel?: string; options?: { label: string; triggerLabel?: string }[] }[]
+      expect(options.map((o) => o.label)).toEqual(['All Games', 'Solitaire', 'Two Player'])
+      expect(options[1].options!.map((o) => o.label)).toEqual(['All', 'Game klondike', 'Game spider'])
+      expect(options[2].options!.map((o) => o.label)).toEqual(['All', 'Game war'])
+      expect(options[2].options![0].triggerLabel).toBe('Two Player')
+    })
+
+    it("show a tab's games, and hand the pack those games with no one game", async () => {
+      await renderStats({}, standInPack([...games, duo], { ...pack(), StatsSections: PackStats }))
+      const twoPlayer = (lastPicker('stats-game').options[2].options[0] as { value: string }).value
+      await pick('stats-game', twoPlayer)
+      expect(screen.getByTestId('stats-war')).toBeTruthy()
+      expect(screen.queryByTestId('stats-klondike')).toBeNull()
+      expect(packStats.mock.lastCall![0]).toEqual({ profileId: null, gameId: null, gameIds: ['war'] })
+    })
   })
 })

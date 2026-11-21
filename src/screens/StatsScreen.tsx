@@ -37,6 +37,9 @@ const NO_PACK_TABS: readonly PackStatsTab[] = []
 // The pickers' values for Everyone and All Games (neither is ever a profile or game id).
 const EVERYONE = '__everyone__'
 const ALL_GAMES = '__all__'
+// A Home tab's games (PackDefinition.homeTabs) on the game picker: the group's row, and its "All" row
+const tabGroup = (index: number) => `__tab-group-${index}__`
+const tabGames = (index: number) => `__tab-${index}__`
 
 const PLAYER_PICKER_ID = 'stats-player'
 const GAME_PICKER_ID = 'stats-game'
@@ -109,7 +112,13 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(() => (pack.useStatsPlayer ? statsPlayer : pack.guestStats ? (lastSelected[1] ?? GUEST_PLAYER_ID) : null))
   const profileId = selectedProfileId && profiles.length > 0 && ((pack.guestStats && selectedProfileId === GUEST_PLAYER_ID) || profiles.some((p) => p.id === selectedProfileId)) ? selectedProfileId : null
 
-  const games = gameId === ALL_GAMES ? pack.games : pack.games.filter((g) => g.id === gameId)
+  // With Home's tabs, the game picker groups the games by them (Jay, 2026-11-20: Solitaire and Two Player, a shorter list), and can be
+  // on a whole tab's games
+  const homeTabs = pack.homeTabs && pack.homeTabs.length > 1 ? pack.homeTabs : null
+  const pickedTab = homeTabs?.findIndex((_, index) => gameId === tabGames(index)) ?? -1
+  const games = gameId === ALL_GAMES ? pack.games : pickedTab >= 0 ? pack.games.filter((g) => homeTabs![pickedTab].includes(g)) : pack.games.filter((g) => g.id === gameId)
+  const gameIds = gameId === ALL_GAMES ? null : games.map((g) => g.id)
+  const oneGameId = gameId === ALL_GAMES || pickedTab >= 0 ? null : gameId
   const packTabs = pack.statsTabs ?? NO_PACK_TABS
   const packTab = packTabs.find((t) => t.value === tab)
   // One achievement list across the pack's games doesn't narrow to a game, so the game picker goes.
@@ -118,7 +127,12 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
   // Always there (Jay, 2026-11-19), with no profile yet too: Everyone, then each profile, then Manage, which
   // opens the Profiles screen to make one.
   const playerOptions = useMemo<OptionPickerOption<string>[]>(() => [{ value: EVERYONE, label: 'Everyone', icon: 'account-group' }, ...(pack.guestStats && profiles.length > 0 ? [{ value: GUEST_PLAYER_ID, label: 'Guest', icon: 'account-outline' }] : []), ...profiles.map((p) => ({ value: p.id, label: p.name, icon: 'account', color: pack.previewColor ? pack.previewColor(p.color, dark) : p.color })), MANAGE_OPTION], [profiles, pack, dark])
-  const gameOptions = useMemo<OptionPickerOption<string>[]>(() => [{ value: ALL_GAMES, label: 'All Games', icon: 'view-grid-outline' }, ...pack.games.map((g) => ({ value: g.id, label: g.title }))], [pack.games])
+  const gameOptions = useMemo<OptionPickerOption<string>[]>(() => {
+    const all = { value: ALL_GAMES, label: 'All Games', icon: 'view-grid-outline' }
+    const option = (g: PackGameDefinition) => ({ value: g.id, label: g.title, icon: 'cards-playing-outline' })
+    if (!homeTabs) return [all, ...pack.games.map(option)]
+    return [all, ...homeTabs.map((tab, index) => ({ value: tabGroup(index), label: tab.label, icon: 'folder-outline', options: [{ value: tabGames(index), label: 'All', triggerLabel: tab.label, icon: 'view-grid-outline' }, ...pack.games.filter((g) => tab.includes(g)).map(option)] }))]
+  }, [pack.games, homeTabs])
   // The pack's label lettering (PackDefinition.labelStyle) on each tab.
   const tabButtons = useMemo(() => {
     const buttons = packTabs.length > 0 ? [{ value: STATS, label: 'Stats' }, ...packTabs.map(({ value, label }) => ({ value, label })), { value: ACHIEVEMENTS, label: 'Achievements' }].map((button) => ({ ...button, style: LABEL_WIDE_TAB })) : TABS
@@ -136,7 +150,7 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
   // The pack's own placement for the pickers' menus (PackDefinition.usePickerAlign), sized from their rows.
   const usePickerAlign = pack.usePickerAlign ?? noPickerAlign
   const playerSize = getOptionPickerContentSize(playerOptions)
-  const gameSize = getOptionPickerContentSize(gameOptions.length)
+  const gameSize = getOptionPickerContentSize(gameOptions)
   const playerAlign = usePickerAlign(pickerHost.openId === PLAYER_PICKER_ID, playerSize.width, playerSize.height)
   const gameAlign = usePickerAlign(pickerHost.openId === GAME_PICKER_ID, gameSize.width, gameSize.height)
 
@@ -157,15 +171,15 @@ function StatsContent({ pickerHost }: { pickerHost: PopoverHost }) {
       {/* Takes a press on its own blank parts (the gap, an open menu's padding) while a menu is open, so
       it never reaches StatsPressAway. */}
       <View style={[styles.filters, pickerHost.openId !== null && styles.filtersOpen]} onStartShouldSetResponder={() => pickerHost.openId !== null}>
-        <OptionPicker id={PLAYER_PICKER_ID} host={pickerHost} options={playerOptions} value={profileId ?? EVERYONE} onChange={(value) => (value === MANAGE ? router.push(PROFILES_HREF) : setSelectedProfileId(value === EVERYONE ? null : value))} color={colors.primary} dark={dark} icon={profileId ? 'account' : 'account-group'} alignOverride={playerAlign} triggerStyle={triggerStyle} />
-        {showGamePicker && <OptionPicker id={GAME_PICKER_ID} host={pickerHost} options={gameOptions} value={gameId} onChange={setGameId} color={colors.primary} dark={dark} icon='view-grid-outline' alignOverride={gameAlign} triggerStyle={triggerStyle} />}
+        <OptionPicker id={PLAYER_PICKER_ID} host={pickerHost} options={playerOptions} value={profileId ?? EVERYONE} onChange={(value) => (value === MANAGE ? router.push(PROFILES_HREF) : setSelectedProfileId(value === EVERYONE ? null : value))} color={colors.primary} dark={dark} icon={profileId ? 'account' : 'account-group'} caption='Player' alignOverride={playerAlign} triggerStyle={triggerStyle} />
+        {showGamePicker && <OptionPicker id={GAME_PICKER_ID} host={pickerHost} options={gameOptions} value={gameId} onChange={setGameId} color={colors.primary} dark={dark} icon='view-grid-outline' caption='Game' alignOverride={gameAlign} triggerStyle={triggerStyle} />}
       </View>
 
       {/* The pack's own section across its games (a calendar of play), first on the Stats tab: it
       follows both filters, so narrowed to one game it shows that game's part. */}
-      {tab === STATS && pack.StatsSections && <pack.StatsSections profileId={profileId} gameId={gameId === ALL_GAMES ? null : gameId} />}
+      {tab === STATS && pack.StatsSections && <pack.StatsSections profileId={profileId} gameId={oneGameId} gameIds={gameIds} />}
 
-      {PackTabContent && <PackTabContent profileId={profileId} gameId={gameId === ALL_GAMES ? null : gameId} />}
+      {PackTabContent && <PackTabContent profileId={profileId} gameId={oneGameId} gameIds={gameIds} />}
 
       {tab === ACHIEVEMENTS && pack.AchievementList ? <pack.AchievementList profileId={profileId} /> : (tab === STATS || tab === ACHIEVEMENTS) && games.map((game) => <GameStats key={game.id} game={game} tab={tab} profileId={profileId} showTitle={games.length > 1 && pack.statsGameTitles !== false} titleColor={fg} />)}
     </BaseStatsScreen>

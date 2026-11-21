@@ -237,7 +237,10 @@ export interface HeroTitleProps {
 // the player (null is Everyone) and the game (null is All Games).
 export interface PackStatsSectionsProps {
   profileId: string | null
+  // The one game the game picker is on, or null for several
   gameId: string | null
+  // The games it's on: null for All Games, one of the pack's Home tabs' games (its Solitaire, its Two Player), or [gameId]
+  gameIds: readonly string[] | null
 }
 
 // A tab on Home (PackDefinition.homeTabs): its label, and which of the pack's games it shows, in the

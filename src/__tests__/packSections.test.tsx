@@ -130,7 +130,7 @@ describe("the pack's stats section", () => {
   it("comes first on the Stats tab, across every game and player, above each game's own", async () => {
     await renderIn(pack, <StatsScreen />)
 
-    expect(packStats.mock.lastCall?.[0]).toEqual({ profileId: null, gameId: null })
+    expect(packStats.mock.lastCall?.[0]).toEqual({ profileId: null, gameId: null, gameIds: null })
     const ids = testIds()
     expect(ids.indexOf('pack-stats')).toBeLessThan(ids.indexOf('stats-klondike'))
     expect(ids).toContain('stats-spider')
@@ -140,10 +140,10 @@ describe("the pack's stats section", () => {
     await renderIn(pack, <StatsScreen />)
 
     await pick('stats-game', 'spider')
-    expect(packStats.mock.lastCall?.[0]).toEqual({ profileId: null, gameId: 'spider' })
+    expect(packStats.mock.lastCall?.[0]).toEqual({ profileId: null, gameId: 'spider', gameIds: ['spider'] })
 
     await pick('stats-player', 'ada')
-    expect(packStats.mock.lastCall?.[0]).toEqual({ profileId: 'ada', gameId: 'spider' })
+    expect(packStats.mock.lastCall?.[0]).toEqual({ profileId: 'ada', gameId: 'spider', gameIds: ['spider'] })
   })
 
   it('stays off the Achievements tab', async () => {
