@@ -205,7 +205,7 @@ function HomeMenu() {
 
       {/* Home's How to Play row replays the pack's own cards (PackDefinition.guide); without them each
       tile's rules button shows its game's. */}
-      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} onShowHowToPlay={pack.guide ? openPack : undefined} />
+      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} onShowHowToPlay={pack.guide ? openPack : undefined} showProfile />
     </View>
   )
 }

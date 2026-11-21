@@ -657,3 +657,12 @@ Jay made a profile's edit screen a real route in `@tastic/profile` (its CLAUDE.m
 - **Needs `@tastic/profile` 0.22.0 or later** (`EditProfileScreen`): the peer floor is `>=0.22.0`, and the dev dependency 0.24.0 (with `@tastic/hud` 0.36.0, which profile 0.23+ needs at least 0.35 of). A minor, breaking for a pack: every pack with `ProfilesRoute` needs the `profile/[id]` route file, and profile 0.22+ is native, so a new build. Seen in CardTastic's web build (headless Chrome): Profiles' New Profile opening Edit Profile, a profile named and saved, and one deleted from its screen.
 - Tests: `profilesRoute.test.tsx` (the list's frame and `onEdit` pushing `/profile/[id]`, the edit route's frame with `portalHost`, its id, a new profile's color, and both over a Backdrop).
 
+## Settings opens your profile, and a pack's sections on Edit Profile (2026-11-20, released in 0.16.0)
+
+Jay, the same day as the Edit Profile route: a profile's online controls belong on its Edit Profile screen ("delete online, show on public, all of that could be on edit profile"), and Settings should go "straight to editing your selected profile, especially when there's only one profile". On `@tastic/hud` 0.37.0 (`profilesRow`) and `@tastic/profile` 0.25.0 (`EditProfileScreen`'s `sections`, `ProfileOnlineSection`), the peer floors and dev dependencies.
+
+- **`SettingsDialog`'s `showProfile`:** hud's Profiles row as "Profile" over seat 1's name (`account-outline`), opening its Edit Profile screen (`profileHref`), or hud's own Profiles / Add or edit players opening the roster while seat 1 is Guest. Home and the loadout pass it; a play screen's Settings (a pack's own `SettingsDialog`) leaves it off, as How to Play, since leaving a game in play would keep its clock running. Adding a second profile stays a seat picker's Manage away.
+- **`PackDefinition.ProfileSections`** (`ComponentType<{ profile }>`): `EditProfileRoute` hands it to `EditProfileScreen`'s `sections`, drawn for a saved profile under Color. CardTastic's is its Daily Deals' `ProfileOnlineSection` with Show on Public Boards.
+- **One toast at a time** (Jay, 2026-11-20, every game): the shell's own toaster (a pack without its own `Toaster`) takes `limit={1}`, from 3; a newer toast takes the older one's place.
+- Tests: `packSections.test.tsx`' "Settings' Profile row" (seat 1's profile and its route, Guest and Profiles, left off a play screen), `profilesRoute.test.tsx`' "draws the pack's own sections".
+

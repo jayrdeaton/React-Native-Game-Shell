@@ -257,7 +257,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
         )}
       </View>
 
-      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} onShowHowToPlay={() => openFor(game.id)} />
+      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} onShowHowToPlay={() => openFor(game.id)} showProfile />
     </View>
   )
 }

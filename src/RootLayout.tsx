@@ -154,7 +154,7 @@ function HapticGatedToastProvider({ children }: { children: ReactNode }) {
 
 function FramedToaster() {
   const renderFrame = useCallback((toasts: ReactNode) => <ScreenFrame passThrough>{toasts}</ScreenFrame>, [])
-  return <Toaster historyButton={null} clearButton={null} limit={3} renderFrame={renderFrame} />
+  return <Toaster historyButton={null} clearButton={null} limit={1} renderFrame={renderFrame} />
 }
 
 // The pack's own toaster (PackDefinition.Toaster), laid over the whole app in hud's ScreenFrame:

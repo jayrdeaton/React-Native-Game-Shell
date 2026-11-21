@@ -140,6 +140,7 @@ PuckTastic and DuelTastic draw what they always did:
 | `resetStats?` | The stats screen's Reset where the pack resets stats itself (`PackStatsReset`: a `useReset` hook returning `(profileId) => void`, and the `labels` for a player's name, Guest, or `null` for Everyone). It follows the player picker, not the game picker. |
 | `statsGameTitles?` | `false` leaves each game's name off its sections on All Games, where the sections name it. |
 | `newProfileColor?` | A new profile's starting color on its Edit Profile screen. Unset is auto-paper's first swatch. |
+| `ProfileSections?` | `ComponentType<{ profile }>`: the pack's own sections on a saved profile's Edit Profile screen, under Color and above Delete Profile, drawn with `@tastic/profile`'s `EditProfileSection` and `EditProfileRow`. A pack with online play puts its `ProfileOnlineSection` (`@tastic/profile/online`) there. |
 | `usePickerAlign?` | `(open, contentWidth, contentHeight) => AlignResult` (`PickerAlign`), a hook: where seat 1's menu on Home, both seat buttons' menus in a loadout's one-human row (2 Player keeps each menu in its own player's half) and the stats screen's two pickers open. It was added because hud's own placement measured a button in a frame turned by `@tastic/core`'s drawn rotation against the upright window (Solitaire's `useFrameAutoAlign`); nothing turns since core 0.15, so a pack may no longer need one. (A profile's color swatch used it too, until the swatches moved onto the Edit Profile screen.) Unset is hud's placement. |
 | `resumeHref?` | `(gameId) => Href \| null`: where a cold launch goes back into a resumable game, for a pack with more than one way to be playing it. Null, or unset, is the game's play screen. |
 | `homePlayerPicker?` | `false` leaves seat 1's button off Home, for a pack whose every game opens a loadout, where the player is picked anyway. |
@@ -294,7 +295,9 @@ actions and defaults are exported for a pack's own code and its tests.
   `humanSeatsFor(mode)`: the seats that press Ready, `[1, 2]` in 2 Player and `[1]` otherwise.
   `seatTwoFor(saved, choices)`: seat 2's saved choice as one game reads it (see `GameDefinition`).
 - `SettingsDialog` (`SettingsDialogProps`): `visible`, `onDismiss`, `onShowHowToPlay` (optional: shows
-  the How to Play row, as a loadout does; left out on Home and in a match) and `children` (a play
+  the How to Play row, as a loadout does; left out on Home and in a match), `showProfile` (optional:
+  the Profile row, "Profile" over seat 1's name, opening its Edit Profile screen, or Profiles while
+  seat 1 is Guest; Home and a loadout show it, a play screen leaves it off) and `children` (a play
   screen's own rows). The pack's `useSettingsRules` goes above the shell's rows, and `children` and
   then the pack's `SettingsSections` under them.
 - `safeBack()`: back, or Home (`/`) where there's nothing to go back to.
@@ -396,8 +399,8 @@ what the shell started using (noted in the table).
 | `@rific/feedback-press` | >=0.13.1 | haptic and sound settings, the UI sounds |
 | `@rific/toaster` | >=0.10.1 | toasts |
 | `@tastic/core` | >=0.16.0 | the seat mode from the window's shape, the root background, the test for a computer behind `useAtComputer` (0.16.0's `useIsTouchPrimaryDevice`) |
-| `@tastic/hud` | >=0.35.0 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0; 0.27.1's options for a pack drawn on its own backdrop; 0.28.0's Ready pill; 0.29.0's leading Settings sections), How to Play, and `ScreenFrame` around the stats screen, Profiles, Edit Profile and the toaster (0.34.0, where `RotatedFrame` became `ScreenFrame`), a pack's lettering (0.35.0's `LetteringProvider`) |
-| `@tastic/profile` | >=0.22.0 | profiles and the shared roster, the seat buttons, seat colors, the dividers in player 1's opponent menu (0.18.0's `dividerBefore`), and each profile's Edit Profile screen (0.22.0's `EditProfileScreen`, behind `EditProfileRoute`) |
+| `@tastic/hud` | >=0.37.0 | Settings, the stats screen, the loadout's panels (its Skia-free `/lobby` entry, new in 0.26.0; 0.27.1's options for a pack drawn on its own backdrop; 0.28.0's Ready pill; 0.29.0's leading Settings sections), How to Play, and `ScreenFrame` around the stats screen, Profiles, Edit Profile and the toaster (0.34.0, where `RotatedFrame` became `ScreenFrame`), a pack's lettering (0.35.0's `LetteringProvider`), Settings' Profile row (0.37.0's `profilesRow`) |
+| `@tastic/profile` | >=0.25.0 | profiles and the shared roster, the seat buttons, seat colors, the dividers in player 1's opponent menu (0.18.0's `dividerBefore`), and each profile's Edit Profile screen (0.22.0's `EditProfileScreen`, behind `EditProfileRoute`, with a pack's sections from 0.25.0) |
 | `@tastic/achievements` | >=0.6.0 | `createGameStats`, `forgetProfileAchievements` |
 | `@tastic/split-screen` | >=0.5.5 | the 2 Player loadout's two halves |
 | `@tastic/edge-guard` | >=0.2.0 | Edge Guard during play (`useEdgeGestureGuard` on iOS, `edgeGuardScreenOptions` on Android) |

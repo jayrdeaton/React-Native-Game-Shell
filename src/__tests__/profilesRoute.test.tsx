@@ -100,4 +100,13 @@ describe("a profile's Edit Profile screen", () => {
     expect(await renderEditProfile('abc', { Backdrop: () => null, foreground: '#F5F1E6' })).toEqual(expect.objectContaining({ bg: 'transparent', fg: '#F5F1E6' }))
     expect(await renderEditProfile('abc')).toEqual(expect.objectContaining({ bg: undefined, fg: undefined }))
   })
+
+  it("draws the pack's own sections for the profile, and none where the pack has none", async () => {
+    const Sections = ({ profile }: { profile: { name: string } }) => <>{profile.name}</>
+    const props = await renderEditProfile('abc', { ProfileSections: Sections })
+    const drawn = props.sections({ id: 'abc', name: 'Ada' })
+    expect(drawn.type).toBe(Sections)
+    expect(drawn.props.profile).toEqual({ id: 'abc', name: 'Ada' })
+    expect((await renderEditProfile('abc')).sections).toBeUndefined()
+  })
 })

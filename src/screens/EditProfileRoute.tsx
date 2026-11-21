@@ -16,15 +16,16 @@ import { ROSTER_MAX_WIDTH } from './ProfilesRoute'
 // In hud's ScreenFrame, as Profiles: the delete confirm is a Paper Portal, which lands in a host inside
 // the frame (portalHost), and the column is capped in the wide layout. A new profile starts on the
 // pack's newProfileColor, or auto-paper's first swatch. Over a pack's Backdrop the screen is
-// transparent, drawn in the pack's foreground.
+// transparent, drawn in the pack's foreground. A saved profile's screen also draws the pack's own
+// ProfileSections (its online play's, say) under Color.
 export function EditProfileRoute() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { profiles, createProfile, updateProfile, deleteProfile } = useProfiles()
-  const { Backdrop, foreground, newProfileColor } = usePack()
+  const { Backdrop, foreground, newProfileColor, ProfileSections } = usePack()
 
   return (
     <ScreenFrame portalHost maxContentWidth={ROSTER_MAX_WIDTH}>
-      <EditProfileScreen profileId={id} profiles={profiles} defaultColor={newProfileColor ?? defaultColors[0].value} onCreate={(patch) => createProfile(patch)} onSave={(profileId, patch) => updateProfile(profileId, patch)} onDelete={deleteProfile} onBack={safeBack} fg={foreground} bg={Backdrop ? 'transparent' : undefined} />
+      <EditProfileScreen profileId={id} profiles={profiles} defaultColor={newProfileColor ?? defaultColors[0].value} onCreate={(patch) => createProfile(patch)} onSave={(profileId, patch) => updateProfile(profileId, patch)} onDelete={deleteProfile} onBack={safeBack} fg={foreground} bg={Backdrop ? 'transparent' : undefined} sections={ProfileSections ? (profile) => <ProfileSections profile={profile} /> : undefined} />
     </ScreenFrame>
   )
 }

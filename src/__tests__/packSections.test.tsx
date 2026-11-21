@@ -15,20 +15,26 @@ import type { PackDefinition, PackStatsSectionsProps } from '../types'
 jest.mock('react-native-safe-area-context', () => ({ ...jest.requireActual('react-native-safe-area-context'), useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) }))
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: () => true } }))
 jest.mock('@rific/toaster', () => ({ ...jest.requireActual('@rific/toaster'), useUpdateErrorToast: () => () => {} }))
+const mockSettingsProps = jest.fn()
 jest.mock('@tastic/hud/chrome', () => {
   const { View: RNView } = require('react-native')
   return {
     ...jest.requireActual('@tastic/hud/chrome'),
-    BaseSettingsDialog: ({ children, leading }: { children: ReactNode; leading?: ReactNode }) => (
-      <RNView testID='settings'>
-        {leading != null && <RNView testID='leading'>{leading}</RNView>}
-        {children}
-      </RNView>
-    ),
+    BaseSettingsDialog: ({ children, leading, ...props }: { children: ReactNode; leading?: ReactNode }) => {
+      mockSettingsProps(props)
+      return (
+        <RNView testID='settings'>
+          {leading != null && <RNView testID='leading'>{leading}</RNView>}
+          {children}
+        </RNView>
+      )
+    },
     BaseStatsScreen: ({ children }: { children: ReactNode }) => <RNView testID='stats'>{children}</RNView>
   }
 })
-jest.mock('../hooks/useProfiles', () => ({ useProfiles: () => ({ profiles: [{ id: 'ada', name: 'Ada', color: '#ff0000', tag: 'ADA', createdAt: 0, updatedAt: 0 }] }) }))
+// Seat 1's pick, for the Profile row
+let mockSeatOne: string | null = null
+jest.mock('../hooks/useProfiles', () => ({ useProfiles: () => ({ profiles: [{ id: 'ada', name: 'Ada', color: '#ff0000', tag: 'ADA', createdAt: 0, updatedAt: 0 }], lastSelected: { 1: mockSeatOne, 2: null } }) }))
 const mockOptionPicker = jest.fn()
 jest.mock('@tastic/profile', () => {
   const { View: RNView } = require('react-native')
@@ -145,5 +151,43 @@ describe("the pack's stats section", () => {
     await act(async () => fireEvent.press(screen.getByText('Achievements')))
 
     expect(screen.queryByTestId('pack-stats')).toBeNull()
+  })
+})
+
+// Jay, 2026-11-20: Settings goes straight to your own profile, especially for someone with just the one. Home and a loadout
+// show the row; a play screen leaves it off, as How to Play.
+describe("Settings' Profile row", () => {
+  const { router } = jest.requireMock('expo-router') as { router: { push: jest.Mock } }
+  const settingsProps = () => mockSettingsProps.mock.lastCall![0] as { onShowProfiles?: () => void; profilesRow?: { label: string; caption: string; icon?: string } }
+
+  async function renderSettings(showProfile: boolean) {
+    const pack = standInPack([standInGame('pong')])
+    await render(<SettingsDialog visible onDismiss={jest.fn()} showProfile={showProfile} />, { wrapper: shellWrapper(pack, standInStore(pack)) })
+  }
+
+  beforeEach(() => {
+    mockSeatOne = null
+    router.push.mockClear()
+  })
+
+  it("opens seat 1's own Edit Profile screen, named in the row", async () => {
+    mockSeatOne = 'ada'
+    await renderSettings(true)
+    expect(settingsProps().profilesRow).toEqual({ label: 'Profile', caption: 'Ada', icon: 'account-outline' })
+    settingsProps().onShowProfiles!()
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/profile/[id]', params: { id: 'ada' } })
+  })
+
+  it('opens Profiles, with its own look, while seat 1 is Guest', async () => {
+    await renderSettings(true)
+    expect(settingsProps().profilesRow).toBeUndefined()
+    settingsProps().onShowProfiles!()
+    expect(router.push).toHaveBeenCalledWith('/profiles')
+  })
+
+  it("is left off a play screen's Settings", async () => {
+    mockSeatOne = 'ada'
+    await renderSettings(false)
+    expect(settingsProps().onShowProfiles).toBeUndefined()
   })
 })

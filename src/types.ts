@@ -2,6 +2,7 @@ import type { ThemeAppearance, ThemeSettings } from '@rific/auto-paper'
 import type { AlignResult, PopoverHost } from '@tastic/hud/chrome'
 import type { GuideStep } from '@tastic/hud/guide'
 import type { MenuOption } from '@tastic/hud/lobby'
+import type { Profile } from '@tastic/profile'
 import type { FontSource } from 'expo-font'
 import type { Href, Stack } from 'expo-router'
 import type { ComponentProps, ComponentType, ReactNode } from 'react'
@@ -386,6 +387,10 @@ export interface PackDefinition {
   statsGameTitles?: boolean
   // A new profile's starting color on its Edit Profile screen. Unset is auto-paper's first swatch.
   newProfileColor?: string
+  // The pack's own sections on a saved profile's Edit Profile screen (EditProfileRoute), under Color and above Delete Profile: its
+  // online play's, say (@tastic/profile/online's ProfileOnlineSection), which is where a profile's online life lives (Jay,
+  // 2026-11-20). Drawn in the screen's own colors (@tastic/profile's EditProfileSection and EditProfileRow).
+  ProfileSections?: ComponentType<{ profile: Profile }>
   // Where a picker's menu opens (its alignOverride) on Home (seat 1's button), a loadout's one-human row
   // (both seat buttons; 2 Player keeps each menu in its own player's half) and the stats screen (its two
   // pickers). It was added because hud's own placement measured a button in a frame turned by
