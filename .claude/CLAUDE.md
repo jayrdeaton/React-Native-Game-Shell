@@ -647,6 +647,15 @@ CardTastic gave every game a setup screen, which changed three things it had ask
 
 Tests: `loadoutOptions`' "a game that places the seat buttons itself", `homeOptions`' "where a cold launch resumes" and "a pack that leaves the player to its loadouts", `homeLayout`'s hero case.
 
+## The loadout's header, and Ready a game's own (2026-11-21)
+
+Jay, on CardTastic's solitaire setup screens: the game's name sat right over the seat button, and READY? at the bottom of a one-person screen with a Daily Deal in between read as disjointed ("Ready" means nothing when nobody else is waiting).
+
+- **The header names the game:** wherever the corner Back and Settings buttons show (everything but 2 Player face to face), `game.title` sits beside Back as the stats screen's title does (hud's `BaseStatsScreen`: `headlineSmall`, bold, the pack's title lettering, centered on the buttons' 52pt row, clear of Settings), and the frame's content starts under that row. `LoadoutOptionsProps.titleShown` tells a game's options, so a game that named itself there (CardTastic's `MatchSetup`) does so only in the face-to-face band.
+- **`GameLoadout.drawsReady`:** with one person the shell draws no Ready and hands `options` an `onReady` (player 1 readying up), for a game that starts the round from a control of its own: CardTastic's solitaire games deal from a New Deal or Continue row in a card, like their Daily Deal's (Jay first saw a PLAY pill there, then asked for it to look like the rows around it). Seat 1's column isn't drawn at all once a game places its seat buttons and draws its start (no empty 28pt gap). 2 Player keeps each person's READY?.
+- **The resume point survives one play screen replacing another:** CardTastic's new-Daily reminder replaces a regular game's play screen with its Daily's, and the stack keeps the old one drawn until its transition ends, so it unmounts after the new one set the resume point and used to clear it (a relaunch then went to Home). `GameRoute`'s `useResumePoint` counts the play screens up and clears only when the last one goes.
+- Tests: `loadoutOptions`' "a game that draws its own start" and "the header: the game's name beside Back", `homeScreen`'s "is kept when a play screen goes while another is up".
+
 ## A profile's own Edit Profile screen (2026-11-20, released in 0.15.0)
 
 Jay made a profile's edit screen a real route in `@tastic/profile` (its CLAUDE.md, "The Edit Profile screen"): `ProfilesManager` is the list and calls `onEdit(id)`, and the new `EditProfileScreen` takes the id (or `NEW_PROFILE_ID`, `'new'`) and the roster callbacks, saving on the back arrow, Done, a swipe back and a back button. The shell's half:

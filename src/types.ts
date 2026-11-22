@@ -56,6 +56,13 @@ export interface LoadoutOptionsProps {
   // With one person, player 1's row of buttons (their seat's, the opponent's and their controls), for a
   // game whose loadout sets placesSeats to put where it likes. Undefined otherwise.
   seats?: ReactNode
+  // With one person, what starts the round (player 1 readying up), for a game whose loadout sets
+  // drawsReady to draw its own start among its options. Undefined otherwise.
+  onReady?: () => void
+  // Whether the loadout's header already shows the game's name (beside Back, as the stats screen's
+  // title does): everywhere but 2 Player face to face, whose back and settings fold into the band
+  // between the players. A game that names itself among its options does so only when this is false.
+  titleShown: boolean
 }
 
 // The colors a seat's controls picker draws with: the loadout's tertiary accent, or the seat's own.
@@ -78,6 +85,11 @@ export interface GameLoadout {
   // instead (LoadoutOptionsProps.seats), for a game that wants them among its own (over its rules, under
   // its name). 2 Player's seats stay in each person's half.
   placesSeats?: boolean
+  // With one person Ready sits under the options row (and the seat buttons). True draws no Ready and
+  // hands `options` an onReady to call instead, for a game that starts the round from a control of its
+  // own (CardTastic's solitaire games: a New Deal or Continue row in a card, like their Daily Deal's, since
+  // READY? means nothing to one person). 2 Player's Ready buttons stay in each person's half.
+  drawsReady?: boolean
   // The popover ids the options row opens, so the loadout can elevate the row while one is open.
   optionIds: readonly string[]
   randomize: () => void

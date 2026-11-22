@@ -43,14 +43,20 @@ export function PlayRoute() {
 // terminates an app it hasn't suspended yet (swiped away from the app switcher soon after leaving
 // it), React Native's renderer stops every surface (RCTSurfacePresenter's will-terminate handler),
 // which unmounts the whole tree, and clearing then sent every such relaunch to Home. Runs once per
-// play screen: the context's functions never change.
+// play screen: the context's functions never change. A play screen that goes while another is up
+// (a pack replacing one play screen with another, CardTastic's regular game with its Daily Deal: the
+// stack keeps the old one drawn until its transition ends, so it unmounts after the new one mounted)
+// leaves the resume point to the one still up.
+let playScreensUp = 0
 function useResumePoint(gameId: string | null) {
   const { setLastActiveGame, clearLastActiveGame } = useLastActiveGame()
   useEffect(() => {
     if (!gameId) return
+    playScreensUp += 1
     setLastActiveGame(gameId)
     return () => {
-      if (AppState.currentState === 'active') clearLastActiveGame()
+      playScreensUp -= 1
+      if (playScreensUp === 0 && AppState.currentState === 'active') clearLastActiveGame()
     }
   }, [gameId, setLastActiveGame, clearLastActiveGame])
 }

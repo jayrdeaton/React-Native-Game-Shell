@@ -1,5 +1,6 @@
 import type { AlignResult } from '@tastic/hud/chrome'
 import { act, render, screen, within } from '@testing-library/react-native'
+import { router } from 'expo-router'
 import { createRef, type ReactNode } from 'react'
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native'
 
@@ -50,7 +51,7 @@ jest.mock('@tastic/hud/lobby', () => {
     },
     ReadyButton: (props: { color: string }) => {
       mockReady(props)
-      return null
+      return <RNView testID='ready-button' />
     },
     SharedActionBand: ({ fg, children }: { fg: string; children: ReactNode }) => {
       mockBand(fg)
@@ -283,6 +284,54 @@ describe('a game that places the seat buttons itself', () => {
     await renderLoadout({}, 'cpu', placing(undefined))
     expect(optionsArgs.mock.lastCall![0].seats).toBeUndefined()
     expect(screen.getAllByTestId('seat-1')).toHaveLength(1)
+  })
+})
+
+describe('a game that draws its own start', () => {
+  const drawing = (drawsReady?: boolean) =>
+    standInGame('ratslap', {
+      seatTwo: ['cpu', 'person'],
+      useLoadout: () => ({
+        ...recordingLoadout,
+        drawsReady,
+        options: (args: LoadoutOptionsProps) => {
+          optionsArgs(args)
+          return null
+        }
+      })
+    }) as LoadoutGame
+
+  it('gets onReady with one person, which starts the round, and the shell draws no Ready', async () => {
+    await renderLoadout({}, 'cpu', drawing(true))
+    expect(screen.queryByTestId('ready-button')).toBeNull()
+    await act(async () => optionsArgs.mock.lastCall![0].onReady!())
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/play/[game]', params: { game: 'ratslap' } })
+  })
+
+  it("keeps each person's READY? in their own half with two people", async () => {
+    await renderLoadout({}, 'person', drawing(true))
+    expect(optionsArgs.mock.lastCall![0].onReady).toBeUndefined()
+    expect(mockReady).toHaveBeenCalled()
+  })
+
+  it("is the shell's Ready for any other game", async () => {
+    await renderLoadout({}, 'cpu', drawing(undefined))
+    expect(optionsArgs.mock.lastCall![0].onReady).toBeUndefined()
+    expect(screen.getAllByTestId('ready-button')).toHaveLength(1)
+  })
+})
+
+describe("the header: the game's name beside Back", () => {
+  it('names the game in the header with one person, and tells the options so', async () => {
+    await renderLoadout()
+    expect(screen.getByRole('header')).toHaveTextContent('Game ratslap')
+    expect(optionsArgs.mock.lastCall![0].titleShown).toBe(true)
+  })
+
+  it('has no header with two people face to face (back and settings fold into the band), so the options name the game', async () => {
+    await renderLoadout({}, 'person')
+    expect(screen.queryByRole('header')).toBeNull()
+    expect(optionsArgs.mock.lastCall![0].titleShown).toBe(false)
   })
 })
 

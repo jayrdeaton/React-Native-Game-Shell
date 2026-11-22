@@ -202,6 +202,27 @@ describe('a resume', () => {
     expect(store.getState().lastActiveGame.gameId).toBe('klondike')
   })
 
+  // A pack can replace one play screen with another (CardTastic: a regular game with its Daily Deal), and the stack draws the
+  // old one until its transition ends: it unmounts after the new one has set the resume point, which must stay.
+  it('is kept when a play screen goes while another is up', async () => {
+    const store = standInStore(pack)
+    const wrapper = shellWrapper(pack, store)
+    mockParams = { game: 'klondike' }
+    await render(
+      <>
+        <PlayRoute key='regular' />
+        <PlayRoute key='daily' />
+      </>,
+      { wrapper }
+    )
+    await screen.rerender(<PlayRoute key='daily' />)
+    expect(store.getState().lastActiveGame.gameId).toBe('klondike')
+
+    // The last one going is backing out
+    await screen.unmount()
+    expect(store.getState().lastActiveGame.gameId).toBeNull()
+  })
+
   it('is not used again by a second Home', async () => {
     const store = standInStore(pack, 'klondike')
     const wrapper = shellWrapper(pack, store)

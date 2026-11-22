@@ -1,12 +1,13 @@
 import { defaultColors, getRgb, useAutoPaperTheme } from '@rific/auto-paper'
 import { useOrientationState } from '@tastic/core'
-import { CornerActionButtons, PressAwayOverlay, usePopoverHost } from '@tastic/hud/chrome'
+import { CornerActionButtons, PressAwayOverlay, useLettering, usePopoverHost } from '@tastic/hud/chrome'
 import { PlayerSetupPanel, ReadyButton, SharedActionBand } from '@tastic/hud/lobby'
 import type { Profile } from '@tastic/profile'
 import { DualZoneLayout, needsSharedNeutralZone, useDualZoneLayout } from '@tastic/split-screen'
 import { router, useFocusEffect } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native'
+import { Text } from 'react-native-paper'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useDispatch } from 'react-redux'
@@ -35,6 +36,14 @@ const PANEL_SWAP_FADE_MS = 180
 // The popover ids a game's seat controls open under (GameLoadout.seatControl).
 const P1_CONTROL_ID = 'p1-control'
 const P2_CONTROL_ID = 'p2-control'
+
+// The header's title, placed as the stats screen's (hud's BaseStatsScreen): beside the corner Back
+// button (8pt from the edge, Paper's 6pt IconButton margin, its 40pt box, 6pt margin, 4pt gap), clear
+// of the Settings button on the right, and centered on the buttons' 52pt row.
+const HEADER_TOP = 8
+const HEADER_ROW_HEIGHT = 52
+const HEADER_TITLE_LEFT = 64
+const HEADER_TITLE_RIGHT = 60
 
 // A game that has a loadout (GameDefinition.useLoadout): the loadout route sends any other straight
 // to its play screen.
@@ -81,6 +90,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   const insets = useSafeAreaInsets()
+  const { title: lettering } = useLettering()
   const { colors: themeColors, dark } = useAutoPaperTheme()
   const { p1Color, p2Color, handleP1ColorChange, handleP2ColorChange } = useSeatColors(p2IsHuman)
   const dispatch = useDispatch<Dispatch<Action>>()
@@ -178,6 +188,8 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   // seat 1's button stands alone.
   const opponentPicker = game.seatTwo && <OpponentPicker key={`opponent-${layoutKey}`} idPrefix='p1' host={controlsHost} choices={game.seatTwo} seatTwo={seatTwo} onSeatTwoChange={changeSeatTwo} cpuDifficulty={loadout.cpuDifficulty} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} allowSwapTaken={mode === 'vsCpu'} dark={dark} previewValue={seatPreview} triggerStyle={triggerStyle} usePickerAlign={seatPickerAlign} />
   const toggleP1Ready = () => setReady((r) => ({ ...r, 1: !r[1] }))
+  // With one person a game can draw its own start among its options (GameLoadout.drawsReady)
+  const readyInOptions = !p2IsHuman && !!loadout.drawsReady
   const seatButtons = (
     <View style={[styles.seatOneButtons, p1PickerOpen && styles.raised]}>
       <Animated.View style={[styles.playersRow, p1PickerOpen && styles.raised, !p2IsHuman && playersRowFade]}>
@@ -192,7 +204,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   const seatOne = (
     <View style={[styles.seatOne, !p2IsHuman && styles.seatOneAlone, p1PickerOpen && !seatsInOptions && styles.raised]}>
       {!seatsInOptions && seatButtons}
-      <ReadyButton color={p1Drawn} ready={ready[1]} onToggleReady={toggleP1Ready} surfaceColor={readySurface} dark={dark} style={!p2IsHuman && p1PickerOpen && styles.readyButtonHidden} />
+      {!readyInOptions && <ReadyButton color={p1Drawn} ready={ready[1]} onToggleReady={toggleP1Ready} surfaceColor={readySurface} dark={dark} style={!p2IsHuman && p1PickerOpen && styles.readyButtonHidden} />}
     </View>
   )
 
@@ -203,6 +215,8 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
     onAccentColor: themeColors.onTertiary,
     dark,
     seats: seatsInOptions ? seatButtons : undefined,
+    onReady: readyInOptions ? () => setReady((r) => ({ ...r, 1: true })) : undefined,
+    titleShown: !showMetaInSharedBand,
     // Left out (the row's own actions unrendered) whenever the shared band below carries them.
     onRandomize: showMetaInSharedBand ? undefined : loadout.randomize,
     onReset: showMetaInSharedBand ? undefined : loadout.reset
@@ -225,7 +239,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       {/* The Settings dialog stays outside this frame: it renders through a Portal. */}
-      <View style={styles.frame}>
+      <View style={[styles.frame, !showMetaInSharedBand && { paddingTop: HEADER_TOP + HEADER_ROW_HEIGHT + insets.top }]}>
         {/* Press-away overlays for the loadout's own menus. P1's covers the whole screen (their
         panel plus the match options read as theirs), while P2's covers only their half and, as a
         later sibling, takes priority there. P2's mounts whenever either host has a menu open, so it
@@ -234,6 +248,16 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
         {p2ZoneStyle && <PressAwayOverlay active={controlsHost.openId !== null || p2Host.openId !== null} onPress={p2Host.close} style={p2ZoneStyle} />}
 
         {!showMetaInSharedBand && <CornerActionButtons onBack={safeBack} onSettings={() => setSettingsOpen(true)} fg={fg} insets={insets} />}
+        {/* The game's name in the header, as a screen's title beside Back (Jay, 2026-11-21: over the
+        seat buttons it read as part of the options). 2 Player face to face has no header: its back
+        and settings sit in the band between the players, where a game names itself. */}
+        {!showMetaInSharedBand && (
+          <View style={[styles.headerTitle, { top: HEADER_TOP + insets.top, left: HEADER_TITLE_LEFT + insets.left, right: HEADER_TITLE_RIGHT + insets.right }]} pointerEvents='none'>
+            <Text variant='headlineSmall' numberOfLines={1} accessibilityRole='header' style={[styles.title, { color: fg }, lettering]}>
+              {game.title}
+            </Text>
+          </View>
+        )}
 
         {p2IsHuman ? (
           <DualZoneLayout
@@ -252,7 +276,8 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
           <View style={styles.stackedZone}>
             {/* A menu opening from seat buttons placed in the options has to clear Ready, the next sibling */}
             {seatsInOptions ? <View style={p1PickerOpen && styles.raised}>{sharedControls}</View> : sharedControls}
-            {seatOne}
+            {/* Nothing left of seat 1's column once a game places its buttons and draws its own start (no empty gap) */}
+            {!(seatsInOptions && readyInOptions) && seatOne}
           </View>
         )}
       </View>
@@ -286,6 +311,11 @@ const styles = StyleSheet.create({
     gap: 32,
     justifyContent: 'center',
     paddingHorizontal: 16
+  },
+  headerTitle: {
+    height: HEADER_ROW_HEIGHT,
+    justifyContent: 'center',
+    position: 'absolute'
   },
   p2ZoneRight: {
     bottom: 0,
@@ -339,5 +369,9 @@ const styles = StyleSheet.create({
   stackedZone: {
     alignItems: 'center',
     gap: 28
+  },
+  // hud's BaseStatsScreen title: the stats screen's header, in the pack's title lettering.
+  title: {
+    fontWeight: 'bold'
   }
 })
