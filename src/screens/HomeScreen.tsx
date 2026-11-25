@@ -171,7 +171,7 @@ function HomeMenu() {
   const pickerAlign = usePickerAlign(pickerHost.openId === `${SEAT_ONE_PICKER}-profile`, pickerSize.width, pickerSize.height)
 
   // A pack can leave seat 1's button off Home (PackDefinition.homePlayerPicker)
-  const picker = <ProfilePicker idPrefix={SEAT_ONE_PICKER} host={pickerHost} profiles={profiles} selectedId={lastSelected[1]} color={p1Drawn} dark={dark} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onSelect={(profile: Profile | null) => selectProfile(1, profile?.id ?? null)} onManage={() => router.push(profilesHref(1))} colorSection={colorSection} alignOverride={pickerAlign} triggerStyle={triggerStyle} />
+  const picker = <ProfilePicker idPrefix={SEAT_ONE_PICKER} host={pickerHost} caption='Player' profiles={profiles} selectedId={lastSelected[1]} color={p1Drawn} dark={dark} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onSelect={(profile: Profile | null) => selectProfile(1, profile?.id ?? null)} onManage={() => router.push(profilesHref(1))} colorSection={colorSection} alignOverride={pickerAlign} triggerStyle={triggerStyle} />
 
   // Closes seat 1's menu on a press anywhere but the menu and its button. Where it's mounted matters on
   // a phone, where zIndex only orders the children of one parent: the menu lives inside the scroller in

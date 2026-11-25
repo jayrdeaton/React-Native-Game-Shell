@@ -194,6 +194,17 @@ describe('who sits in seat 2', () => {
     expect(router.push).toHaveBeenLastCalledWith({ pathname: '/profiles', params: { seat: '1' } })
   })
 
+  // Jay, 2026-11-25: each seat button names its seat, as the stats screen's pickers do
+  it('captions each seat button: PLAYER and OPPONENT with one person, PLAYER 1 and PLAYER 2 in 2 Player', async () => {
+    await renderLoadout({}, 'cpu')
+    expect(panelFor('p1').caption).toBe('Player')
+    expect(lastOpponent().caption).toBe('Opponent')
+
+    await renderLoadout({}, 'person')
+    expect(panelFor('p1').caption).toBe('Player 1')
+    expect(panelFor('p2').caption).toBe('Player 2')
+  })
+
   it('gives seat 2 no button of its own with the CPU there', async () => {
     await renderLoadout({}, 'cpu')
 

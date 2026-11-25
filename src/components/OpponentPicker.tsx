@@ -95,7 +95,7 @@ export function OpponentPicker({ idPrefix, host, choices, seatTwo, onSeatTwoChan
 
   return (
     <View style={[styles.button, host.openId === pickerId && styles.buttonOpen]}>
-      <OptionPicker id={pickerId} host={host} options={options} value={value} onChange={handleChange} color={drawn} dark={dark} icon={icon} colorSection={colorSection} alignOverride={align} triggerStyle={triggerStyle} />
+      <OptionPicker id={pickerId} host={host} caption='Opponent' options={options} value={value} onChange={handleChange} color={drawn} dark={dark} icon={icon} colorSection={colorSection} alignOverride={align} triggerStyle={triggerStyle} />
     </View>
   )
 }

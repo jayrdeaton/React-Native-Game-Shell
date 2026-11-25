@@ -139,6 +139,11 @@ describe("seat 1's button", () => {
     expect(router.push).toHaveBeenLastCalledWith({ pathname: '/profiles', params: { seat: '1' } })
   })
 
+  it('is captioned PLAYER, as the stats screen names its pickers', async () => {
+    await renderHome()
+    expect(lastPicker()).toEqual(expect.objectContaining({ caption: 'Player' }))
+  })
+
   it('says P1 for a guest by default, and what the pack says where it says', async () => {
     await renderHome()
     expect(lastPicker()).toEqual(expect.objectContaining({ guestLabel: 'P1', nullLabel: undefined }))

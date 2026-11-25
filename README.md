@@ -11,6 +11,11 @@ How to Play and stats tabs into the same screens.
 The stats screen's player picker is always there, with no profile yet too: Everyone, each profile
 (and Guest, with `guestStats`, once one exists), then Manage, which opens the Profiles screen.
 
+Every seat button names its seat in a small caption over it (0.20.0+, on `@tastic/profile` 0.29.0 and
+`@tastic/hud` 0.40.0), as the stats screen's PLAYER and GAME pickers do: PLAYER over seat 1's button on
+Home and in a loadout with one person, PLAYER 1 and PLAYER 2 in 2 Player's halves, and OPPONENT over
+player 1's opponent button.
+
 Built from the shell PuckTastic and DuelTastic each carried in `src/shell/` (made identical on
 2026-10-28), so the packs and the next ones (CardTastic) share one copy. Part of the `@tastic`
 package ecosystem, on [`@tastic/hud`](https://github.com/jayrdeaton/react-native-hud),
