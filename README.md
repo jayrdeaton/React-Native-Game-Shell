@@ -27,7 +27,7 @@ package ecosystem, on [`@tastic/hud`](https://github.com/jayrdeaton/react-native
 - **Screens** for the routes: `HomeScreen` (the pack's hero, seat 1's button, a row per game, or a
   grid of preview tiles on a wide screen, split into tabs where the pack has them), `LoadoutRoute` and `PlayRoute` (`loadout/[game]`,
   `play/[game]`), `ProfilesRoute`, `EditProfileRoute` (`profile/[id]`, one profile's Edit Profile
-  screen, which Profiles pushes with the profile's id or `new`) and `StatsScreen`.
+  screen, which Profiles pushes with the profile's id or `new`; a profile made there is picked for the seat whose Manage opened Profiles) and `StatsScreen`.
 - **The store**: `createPackStore(pack, { keyPrefix, migrate, blacklist, serializableIgnoredPaths,
   middleware })` builds one persisted store from the shell's keys (theme, haptics, sound, Keep Awake,
   profiles, seat selection, seat colors, app settings, seat 2, the never-saved `liveplay`, and
@@ -108,9 +108,9 @@ the front of an in-app link, so a route starting with a game id equal to the bas
 | `appearance?` | The theme's appearance on a fresh install (`'system'` when unset). |
 | `HeroTitle` | Home's wordmark, drawn by the pack (`HeroTitleProps`: `words`, `color`, `p1Color`, `p2Color`, `active`, false while Home is covered or the app is in the background, and `fit`, the box it has beside the preview grid on a wide screen, undefined at its own size). |
 | `fonts?` | Fonts the pack's own art needs, loaded behind the splash screen beside the icon font. |
-| `fontFamily?` | The typeface on every Paper text variant. Unset is Paper's own. |
-| `titleStyle?` | The lettering of the pack's titles alone (a title font, AlphaTastic's), laid over each title's own type: Home's game cards, the stats screen's title and game headings, and every hud dialog's title (the shell mounts hud's `DialogHeaderStyleProvider` in the standard tone, so the big icon and accent color stay). Needs `@tastic/hud` with `titleStyle` in the standard tone and on `BaseStatsScreen`. |
-| `labelStyle?` | The lettering of the pack's small labels alone, laid over each one's own type: the stats screen's and Home's tabs, the stats screen's section headings, the Settings sheet's sections and every `@tastic/profile` picker pill. The shell mounts hud's `LetteringProvider` with it and `titleStyle`. Needs `@tastic/hud` with `LetteringProvider` and `@tastic/profile` reading it. |
+| `fontFamily?` | The typeface on every Paper text variant, and on every toast (`@rific/toaster` 0.14.0+ takes the theme's font). Unset is Paper's own. |
+| `titleStyle?` | The lettering of the pack's titles alone (a title font, AlphaTastic's), laid over each title's own type: Home's game cards, each loadout's header, the stats screen's title and game headings, every hud dialog's title (the shell mounts hud's `DialogHeaderStyleProvider` in the standard tone, so the big icon and accent color stay), each How to Play card's title (`@tastic/hud` 0.38.0+) and the Profiles and Edit Profile titles (`@tastic/profile` 0.27.0+). Needs `@tastic/hud` with `titleStyle` in the standard tone and on `BaseStatsScreen`. |
+| `labelStyle?` | The lettering of the pack's small labels alone, laid over each one's own type: the stats screen's and Home's tabs, the stats screen's section headings (the Achievements tab's too, `@tastic/hud` 0.38.0+), the Settings sheet's sections, every `@tastic/profile` picker pill, a loadout's READY? (`@tastic/hud` 0.38.0+) and Edit Profile's headings (`@tastic/profile` 0.28.0+). The shell mounts hud's `LetteringProvider` with it and `titleStyle`. Needs `@tastic/hud` with `LetteringProvider` and `@tastic/profile` reading it. |
 | `otaVersion` | The version label in Settings. |
 | `useSettingsRules?` | A hook returning what goes first in every Settings dialog, above the shell's rows: the rules of the game it's opened in. Null where there's nothing (Home). |
 | `SettingsSections?` | The pack's own Settings sections, in every Settings dialog, under the shell's rows and any a play screen adds. |

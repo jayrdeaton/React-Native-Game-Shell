@@ -133,6 +133,12 @@ describe("a tile's rules button", () => {
 })
 
 describe("seat 1's button", () => {
+  it('opens Profiles for seat 1 from Manage, so a profile made there is picked for it', async () => {
+    await renderHome()
+    ;(lastPicker() as unknown as { onManage: () => void }).onManage()
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/profiles', params: { seat: '1' } })
+  })
+
   it('says P1 for a guest by default, and what the pack says where it says', async () => {
     await renderHome()
     expect(lastPicker()).toEqual(expect.objectContaining({ guestLabel: 'P1', nullLabel: undefined }))

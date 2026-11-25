@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import { useAppSettings } from '../hooks/useAppSettings'
 import { useProfiles } from '../hooks/useProfiles'
 import { usePack } from '../PackContext'
-import { profileHref, PROFILES_HREF } from '../routes'
+import { profileHref, profilesHref } from '../routes'
 
 export interface SettingsDialogProps {
   visible: boolean
@@ -42,7 +42,7 @@ export function SettingsDialog({ visible, onDismiss, onShowHowToPlay, showProfil
   const rules = useSettingsRules()
   const { profiles, lastSelected } = useProfiles()
   const seatOne = profiles.find((profile) => profile.id === lastSelected[1]) ?? null
-  const profileRow = showProfile ? (seatOne ? { onShowProfiles: () => router.push(profileHref(seatOne.id)), profilesRow: { label: 'Profile', caption: seatOne.name, icon: 'account-outline' } } : { onShowProfiles: () => router.push(PROFILES_HREF) }) : {}
+  const profileRow = showProfile ? (seatOne ? { onShowProfiles: () => router.push(profileHref(seatOne.id)), profilesRow: { label: 'Profile', caption: seatOne.name, icon: 'account-outline' } } : { onShowProfiles: () => router.push(profilesHref(1)) }) : {}
   const edgeGuardProps = edgeGuard ? { deferBottomEdgeGestures: settings.deferBottomEdgeGestures, onDeferBottomEdgeGestures: (value: boolean) => setSettings({ deferBottomEdgeGestures: value }) } : {}
 
   return (

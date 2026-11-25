@@ -15,10 +15,12 @@ import type { PackDefinition } from '../types'
 const mockFrame = jest.fn()
 const mockProfilesScreen = jest.fn()
 const mockEditProfileScreen = jest.fn()
-const mockParams: { id?: string } = {}
+const mockParams: { id?: string; seat?: string } = {}
+const mockCreateProfile = jest.fn((patch: { name: string }) => ({ id: 'made', ...patch }))
+const mockSelectProfile = jest.fn()
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: () => true }, useLocalSearchParams: () => mockParams }))
-jest.mock('../hooks/useProfiles', () => ({ useProfiles: () => ({ profiles: [], createProfile: jest.fn(), updateProfile: jest.fn(), deleteProfile: jest.fn() }) }))
+jest.mock('../hooks/useProfiles', () => ({ useProfiles: () => ({ profiles: [], createProfile: mockCreateProfile, updateProfile: jest.fn(), deleteProfile: jest.fn(), selectProfile: mockSelectProfile }) }))
 jest.mock('@tastic/hud/chrome', () => ({
   ...jest.requireActual('@tastic/hud/chrome'),
   ScreenFrame: ({ children, ...props }: { children: ReactNode }) => {
@@ -55,6 +57,9 @@ beforeEach(() => {
   mockFrame.mockClear()
   mockProfilesScreen.mockClear()
   mockEditProfileScreen.mockClear()
+  mockCreateProfile.mockClear()
+  mockSelectProfile.mockClear()
+  delete mockParams.seat
   jest.mocked(router.push).mockClear()
 })
 
@@ -108,5 +113,47 @@ describe("a profile's Edit Profile screen", () => {
     expect(drawn.type).toBe(Sections)
     expect(drawn.props.profile).toEqual({ id: 'abc', name: 'Ada' })
     expect((await renderEditProfile('abc')).sections).toBeUndefined()
+  })
+})
+
+// Jay, 2026-11-16 in HexFleet: a new profile is selected in the seat that went to make it. Seat 1's Manage (Home, a loadout) and
+// Settings' Profiles row for its guest open Profiles with the seat (profilesHref), New Profile carries it, and the profile made is
+// picked for it. The stats screen's Manage opens Profiles for no seat.
+describe('a new profile', () => {
+  const patch = { name: 'Kid', color: '#2196f3', tag: 'K' }
+
+  it('carries the seat that opened Profiles to New Profile, and to no saved profile', async () => {
+    mockParams.seat = '1'
+    const props = await renderProfiles()
+    props.onEdit('new')
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/profile/[id]', params: { id: 'new', seat: '1' } })
+    props.onEdit('abc')
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/profile/[id]', params: { id: 'abc' } })
+  })
+
+  it('carries no seat where none opened Profiles (the stats screen)', async () => {
+    const props = await renderProfiles()
+    props.onEdit('new')
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/profile/[id]', params: { id: 'new' } })
+  })
+
+  it('is picked for the seat that went to make it, the newest made winning', async () => {
+    mockParams.seat = '1'
+    const props = await renderEditProfile('new')
+    props.onCreate(patch)
+    expect(mockCreateProfile).toHaveBeenCalledWith(patch)
+    expect(mockSelectProfile).toHaveBeenLastCalledWith(1, 'made')
+
+    mockParams.seat = '2'
+    ;(await renderEditProfile('new')).onCreate(patch)
+    expect(mockSelectProfile).toHaveBeenLastCalledWith(2, 'made')
+  })
+
+  it('is picked for no seat when none opened Profiles, or one the pack has no such seat for', async () => {
+    ;(await renderEditProfile('new')).onCreate(patch)
+    mockParams.seat = '3'
+    ;(await renderEditProfile('new')).onCreate(patch)
+    expect(mockCreateProfile).toHaveBeenCalledTimes(2)
+    expect(mockSelectProfile).not.toHaveBeenCalled()
   })
 })

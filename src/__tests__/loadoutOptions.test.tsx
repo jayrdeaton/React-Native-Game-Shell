@@ -188,6 +188,12 @@ describe('who sits in seat 2', () => {
     expect(panelFor('p2').host).not.toBe(lastPanel().host)
   })
 
+  it("opens Profiles for seat 1 from its button's Manage, so a profile made there is picked for it", async () => {
+    await renderLoadout()
+    lastPanel().onManageProfiles()
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/profiles', params: { seat: '1' } })
+  })
+
   it('gives seat 2 no button of its own with the CPU there', async () => {
     await renderLoadout({}, 'cpu')
 

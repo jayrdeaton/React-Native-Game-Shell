@@ -182,7 +182,8 @@ describe("Settings' Profile row", () => {
     await renderSettings(true)
     expect(settingsProps().profilesRow).toBeUndefined()
     settingsProps().onShowProfiles!()
-    expect(router.push).toHaveBeenCalledWith('/profiles')
+    // For seat 1, so a profile made there is picked for it (EditProfileRoute)
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/profiles', params: { seat: '1' } })
   })
 
   it("is left off a play screen's Settings", async () => {

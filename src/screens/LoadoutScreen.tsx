@@ -23,7 +23,7 @@ import { useSeatColors } from '../hooks/useSeatColors'
 import { safeBack } from '../navigation'
 import { usePack } from '../PackContext'
 import { liveplayActions } from '../redux/liveplaySlice'
-import { playHref, PROFILES_HREF } from '../routes'
+import { playHref, profilesHref } from '../routes'
 import { humanSeatsFor, type PackGameDefinition, roundModeFor, type Seat, type SeatTwo, seatTwoFor } from '../types'
 
 // The player-panel area: whenever the window changes shape (a tablet turning, a browser window
@@ -183,7 +183,7 @@ export function LoadoutScreen({ game }: { game: LoadoutGame }) {
   const p1Control = loadout.seatControl(1, controlsHost, { ...controlLook, seatColor: p1Drawn })
   // Seat 1's button alone: player 1's controls and Ready sit under the row it shares with the
   // opponent button, centered under both.
-  const p1Panel = <PlayerSetupPanel key={`p1-${layoutKey}`} idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman dark={dark} showReadyButton={false} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(PROFILES_HREF)} previewValue={seatPreview} triggerStyle={triggerStyle} useSeatPickerAlign={seatPickerAlign} />
+  const p1Panel = <PlayerSetupPanel key={`p1-${layoutKey}`} idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman dark={dark} showReadyButton={false} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel={pack.guestLabel ?? 'P1'} nullLabel={pack.nullLabel} onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push(profilesHref(1))} previewValue={seatPreview} triggerStyle={triggerStyle} useSeatPickerAlign={seatPickerAlign} />
   // Who sits in seat 2, player 1's to pick in every mode. A game for one player (no seatTwo) has none:
   // seat 1's button stands alone.
   const opponentPicker = game.seatTwo && <OpponentPicker key={`opponent-${layoutKey}`} idPrefix='p1' host={controlsHost} choices={game.seatTwo} seatTwo={seatTwo} onSeatTwoChange={changeSeatTwo} cpuDifficulty={loadout.cpuDifficulty} color={p2Color} onColorChange={handleP2ColorChange} swatches={defaultColors} takenColor={p1Color} allowSwapTaken={mode === 'vsCpu'} dark={dark} previewValue={seatPreview} triggerStyle={triggerStyle} usePickerAlign={seatPickerAlign} />
